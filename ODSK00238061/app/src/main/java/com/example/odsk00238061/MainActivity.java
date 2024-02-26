@@ -52,12 +52,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class MainActivity extends AppCompatActivity  {
 
     private static final int TOUCH_DURATION_THRESHOLD = 3000; // 3 seconds
-    private boolean isSpeechRecognitionActivated = false;
     private Handler handler = new Handler();
     private Runnable longTouchRunnable;
     private SpeechRecognizer speechRecognizer;
     private Intent intentRecognizer;
-    private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     private BlockingQueue<DetectedObject> objectQueue;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Speaker speaker;
@@ -240,6 +238,8 @@ public class MainActivity extends AppCompatActivity  {
                 if(matches != null){
                     if(matches.contains("text to speech")){
                         speaker.speakText("Hello Eddie, your speech recognition is working fine");
+                        Intent intent = new Intent(MainActivity.this, TextToSpeechActivity.class);
+                        startActivity(intent);
                     } else {
                         speaker.speakText("I am sorry, I did not understand what you said");
                         Thread newSpeakerThread = new Thread(speaker);

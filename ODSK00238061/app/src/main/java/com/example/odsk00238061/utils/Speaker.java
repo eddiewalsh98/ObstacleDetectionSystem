@@ -29,6 +29,11 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
     private BlockingQueue<DetectedObject> objectQueue;
     private Timer timer;
 
+    public Speaker(Context context) {
+        this.context = context;
+        textToSpeech = new TextToSpeech(context, this);
+    }
+
     public Speaker(Context context, int threshold, BlockingQueue<DetectedObject> objectQueue, PreviewView previewView) {
         this.context = context;
         this.view = previewView;
@@ -59,7 +64,14 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
 
     @Override
     public void onInit(int status) {
-        int langResult = textToSpeech.setLanguage(Locale.US);
+        if (status == TextToSpeech.SUCCESS) {
+            int langResult = textToSpeech.setLanguage(Locale.US);
+            if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("Speaker", "Language is not supported");
+            }
+        } else {
+            Log.e("Speaker", "Initialization failed");
+        }
     }
 
     public void speakText(String text) {
@@ -71,7 +83,6 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
                 textToSpeech.stop();
             }
             textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
-            writeCommandToFile(text);
             Log.d("SpeakText", "Text Successfully Spoken");
         } catch(Exception e){
             Log.d("SpeakText", e.getMessage());
