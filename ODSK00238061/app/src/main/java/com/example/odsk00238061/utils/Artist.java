@@ -2,38 +2,61 @@ package com.example.odsk00238061.utils;
 
 import android.content.Context;
 import android.graphics.Rect;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.RelativeLayout;
 
 import androidx.camera.view.PreviewView;
 
+import com.example.odsk00238061.MainActivity;
 import com.google.mlkit.vision.objects.DetectedObject;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
+
 
 public class Artist implements Runnable {
     private BlockingQueue<DetectedObject> objectQueue;
     private PreviewView preview;
     private Context context;
+    private Handler mainHandler;
     private ConcurrentHashMap<Integer, BoundingBox> boundingboxDictionary;
 
-    public Artist(Context context, PreviewView preview, BlockingQueue<DetectedObject> objectQueue) {
+    public Artist(MainActivity context, PreviewView previewView, BlockingQueue<DetectedObject> objectQueue, android.os.Handler mainHandler) {
         this.context = context;
-        this.preview = preview;
+        this.preview = previewView;
         this.boundingboxDictionary = new ConcurrentHashMap<>();
         this.objectQueue = objectQueue;
+        this.mainHandler = mainHandler;
     }
 
     @Override
     public void run() {
         try{
-            while(true){
-                DetectedObject detectedObject = objectQueue.take();
-                addBoundingBox(detectedObject);
+            while(!Thread.currentThread().isInterrupted()){
+                if(!objectQueue.isEmpty()){
+                    //DetectedObject detectedObject = objectQueue.take();
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            while(!Thread.currentThread().isInterrupted()){
+
+                                Log.d("Artist Run", "In run thread");
+
+                            try {
+                                DetectedObject detectedObject = objectQueue.take();
+                                addBoundingBox(detectedObject);
+                                startUpdatingBoundingBoxes();
+                            } catch (InterruptedException e) {
+                                Log.d("Artist Run", e.getMessage());
+                               Thread.currentThread().interrupt();
+                            }
+                            }
+                        }
+                    });
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -44,40 +67,43 @@ public class Artist implements Runnable {
 
     public void startUpdatingBoundingBoxes()
     {
-        // Start a separate thread for updating bounding boxes periodically
-        Thread updateThread = new Thread(() -> {
-            try {
-                while (true) {
-                    updateBoundingBoxes();
-                    Thread.sleep(1000); // Adjust the interval as needed
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                Thread.currentThread().interrupt(); // Restore interrupted state
-                Log.d("Update Thread", e.getMessage());
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                updateBoundingBoxes();
             }
         });
-        updateThread.start();
     }
 
     private void addBoundingBox(DetectedObject object) {
         BoundingBox boundingBox = new BoundingBox(context);
-        boundingBox.setLocation(object.getBoundingBox());
-        boundingBox.setBoundingBoxID(object.getTrackingId());
-        boundingBox.setLabel(ProjectHelper.getLabelWithHighestConfidence(object.getLabels()));
-        preview.addView(boundingBox);
-        boundingboxDictionary.put(object.getTrackingId(), boundingBox);
-    }
-
-    private void RemoveBoundingBoxFromView(int trackingId) {
-        BoundingBox boundingBox = boundingboxDictionary.get(trackingId);
-        preview.removeView(boundingBox);
+        if(object != null){
+            boundingBox.setLocation(object.getBoundingBox());
+            boundingBox.setLocation(object.getBoundingBox());
+            boundingBox.setBoundingBoxID(object.getTrackingId());
+            boundingBox.setLabel(ProjectHelper.getLabelWithHighestConfidence(object.getLabels()));
+            if(preview != null) {
+                Log.d("Artist", "Before Adding Bounding Box To Preview");
+                preview.addView(boundingBox);
+                Log.d("Artist", "After Adding Bounding Box To Preview");
+                boundingboxDictionary.put(object.getTrackingId(), boundingBox);
+            } else {
+                Log.e("Artist", "PreviewView is null");
+            }
+        } else{
+            Log.e("Artist", "Detected Object is null");
+        }
     }
 
     private void RemoveBoundingBoxCompletely(int trackingId) {
-        BoundingBox boundingBox = boundingboxDictionary.get(trackingId);
-        RemoveBoundingBoxFromView(trackingId);
-        boundingboxDictionary.remove(trackingId);
+        if (boundingboxDictionary != null) {
+            BoundingBox boundingBox = boundingboxDictionary.get(trackingId);
+            if (preview != null) {
+                preview.removeView(boundingBox);
+            }
+        } else {
+            Log.e("Artist", "PreviewView is null");
+        }
     }
 
 

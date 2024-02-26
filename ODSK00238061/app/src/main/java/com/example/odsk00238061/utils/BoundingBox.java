@@ -10,6 +10,7 @@ import android.view.View;
 
 public class BoundingBox extends View {
 
+    private float scaleFactor = 1.0f;
     private Integer boundingboxID;
     private Rect location;
     private String label;
@@ -88,4 +89,9 @@ public class BoundingBox extends View {
     public Integer getBoundingBoxID() {
         return boundingboxID;
     }
+
+    public float scale(float imagePixel) {
+        return imagePixel * scaleFactor;
+    }
+
 }

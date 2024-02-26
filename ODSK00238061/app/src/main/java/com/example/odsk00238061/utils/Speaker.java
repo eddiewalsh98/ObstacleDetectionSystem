@@ -8,6 +8,9 @@ import androidx.camera.view.PreviewView;
 
 import com.google.mlkit.vision.objects.DetectedObject;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -16,8 +19,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Speaker implements Runnable, TextToSpeech.OnInitListener {
 
+    private boolean isRunning = true;
+    private static final String FILENAME = "directions.txt";
     private TextToSpeech textToSpeech;
-
     private PreviewView view;
     private Context context;
     private ConcurrentHashMap<Integer, Obstacle> obstacleDictionary;
@@ -34,12 +38,13 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
         textToSpeech = new TextToSpeech(context, this);
         timer = new Timer();
         timer.scheduleAtFixedRate(new CheckThresholdTask(), 0, 1000);
+        createFileIfNotExists(context);
     }
 
     @Override
     public void run() {
         try {
-            while (true) {
+            while (isRunning) { // Check the flag in the loop condition
                 if(!objectQueue.isEmpty()){
                     DetectedObject detectedObject = objectQueue.take();
                     processDetectedObject(detectedObject);
@@ -57,7 +62,7 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
         int langResult = textToSpeech.setLanguage(Locale.US);
     }
 
-    private void speakText(String text) {
+    public void speakText(String text) {
         try{
             if (textToSpeech == null) {
                 textToSpeech = new TextToSpeech(context, this);
@@ -66,6 +71,7 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
                 textToSpeech.stop();
             }
             textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+            writeCommandToFile(text);
             Log.d("SpeakText", "Text Successfully Spoken");
         } catch(Exception e){
             Log.d("SpeakText", e.getMessage());
@@ -78,6 +84,10 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
     public void stop() {
         textToSpeech.stop();
         textToSpeech.shutdown();
+    }
+
+    public void setRunning(boolean running) {
+        isRunning = running;
     }
 
     public void addObstacle(DetectedObject object) {
@@ -122,6 +132,30 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
             }
         } catch(Exception e){
             Log.d("ProcessDetectedObject", e.getMessage());
+        }
+    }
+
+    public void writeCommandToFile(String command) {
+        try {
+            FileWriter writer = new FileWriter(FILENAME, true);
+            writer.write(command + "\n");
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Handle file writing error
+        }
+    }
+
+    private void createFileIfNotExists(Context context) {
+        File file = new File(context.getFilesDir(), "directions.txt");
+        Log.d("File", "File Path: " + file.getAbsolutePath());
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.d("CreateFile", e.getMessage());
+            }
         }
     }
 
