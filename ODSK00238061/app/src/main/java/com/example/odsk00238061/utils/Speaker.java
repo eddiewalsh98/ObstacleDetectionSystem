@@ -11,14 +11,14 @@ import com.google.mlkit.vision.objects.DetectedObject;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Speaker implements Runnable, TextToSpeech.OnInitListener {
-
+public class Speaker implements Runnable,TextToSpeech.OnInitListener {
     private boolean isRunning = true;
     private static final String FILENAME = "directions.txt";
     private TextToSpeech textToSpeech;
@@ -31,7 +31,7 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
 
     public Speaker(Context context) {
         this.context = context;
-        textToSpeech = new TextToSpeech(context, this);
+        this.textToSpeech = new TextToSpeech(context, this);
     }
 
     public Speaker(Context context, int threshold, BlockingQueue<DetectedObject> objectQueue, PreviewView previewView) {
@@ -40,11 +40,11 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
         this.obstacleDictionary = new ConcurrentHashMap<>();
         this.threshold = threshold;
         this.objectQueue = objectQueue; // Initialize the objectQueue
-        textToSpeech = new TextToSpeech(context, this);
-        timer = new Timer();
-        timer.scheduleAtFixedRate(new CheckThresholdTask(), 0, 1000);
-        createFileIfNotExists(context);
+        this.textToSpeech = new TextToSpeech(context, this);
+        this.timer = new Timer();
+        this.timer.scheduleAtFixedRate(new CheckThresholdTask(), 0, 1000);
     }
+
 
     @Override
     public void run() {
@@ -64,6 +64,7 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
 
     @Override
     public void onInit(int status) {
+
         if (status == TextToSpeech.SUCCESS) {
             int langResult = textToSpeech.setLanguage(Locale.US);
             if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
@@ -146,27 +147,10 @@ public class Speaker implements Runnable, TextToSpeech.OnInitListener {
         }
     }
 
-    public void writeCommandToFile(String command) {
-        try {
-            FileWriter writer = new FileWriter(FILENAME, true);
-            writer.write(command + "\n");
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            // Handle file writing error
-        }
-    }
-
-    private void createFileIfNotExists(Context context) {
-        File file = new File(context.getFilesDir(), "directions.txt");
-        Log.d("File", "File Path: " + file.getAbsolutePath());
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.d("CreateFile", e.getMessage());
-            }
+    public void Destroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
         }
     }
 

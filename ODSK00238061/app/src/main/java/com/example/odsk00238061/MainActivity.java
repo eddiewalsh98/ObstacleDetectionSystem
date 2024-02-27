@@ -147,7 +147,6 @@ public class MainActivity extends AppCompatActivity  {
                 .build();
 
         objectDetector = ObjectDetection.getClient(options);
-        //startSpeechRecognition();
     }
 
     private void BindPreview(ProcessCameraProvider CameraProvider, Context context)
@@ -194,8 +193,7 @@ public class MainActivity extends AppCompatActivity  {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        // Stop speech recognition when the activity is destroyed
+        speaker.setRunning(false);
         stopSpeechRecognition();
     }
 
@@ -205,7 +203,6 @@ public class MainActivity extends AppCompatActivity  {
             @Override
             public void onReadyForSpeech(Bundle params) {
                 speaker.setRunning(false);
-                objectQueue.clear();
             }
 
             @Override
@@ -237,9 +234,11 @@ public class MainActivity extends AppCompatActivity  {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if(matches != null){
                     if(matches.contains("text to speech")){
-                        speaker.speakText("Hello Eddie, your speech recognition is working fine");
+                        //speaker.speakText("Hello Eddie, your speech recognition is working fine");
                         Intent intent = new Intent(MainActivity.this, TextToSpeechActivity.class);
+                        speaker.Destroy();
                         startActivity(intent);
+
                     } else {
                         speaker.speakText("I am sorry, I did not understand what you said");
                         Thread newSpeakerThread = new Thread(speaker);
@@ -263,19 +262,8 @@ public class MainActivity extends AppCompatActivity  {
 
     private void stopSpeechRecognition() {
         // Stop listening for speech
-        speechRecognizer.stopListening();
+        //speechRecognizer.stopListening();
     }
-
-//    @Override
-//    public boolean onTouchEvent(MotionEvent event) {
-//        //return super.onTouchEvent(event);
-//        try{
-//        } catch (Exception e){
-//            Log.e("Touch Event", e.getMessage());
-//            return false;
-//        }
-//    }
-
     private void startLongTouchTimer() {
         if (longTouchRunnable == null) {
             longTouchRunnable = new Runnable() {
@@ -296,4 +284,12 @@ public class MainActivity extends AppCompatActivity  {
         }
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        speaker.setRunning(false);
+        stopSpeechRecognition();
+        objectQueue.clear();
+        objectDetector.close();
+    }
 }
