@@ -20,30 +20,40 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
+import android.util.Rational;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.example.odsk00238061.utils.ProjectHelper;
+import com.example.odsk00238061.utils.RectangleOverlayView;
 import com.example.odsk00238061.utils.Speaker;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.common.model.LocalModel;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.objects.DetectedObject;
 import com.google.mlkit.vision.objects.ObjectDetection;
 import com.google.mlkit.vision.objects.ObjectDetector;
-import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions;
+import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -52,16 +62,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class MainActivity extends AppCompatActivity  {
 
     private static final int TOUCH_DURATION_THRESHOLD = 3000; // 3 seconds
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
     private Runnable longTouchRunnable;
     private SpeechRecognizer speechRecognizer;
     private Intent intentRecognizer;
     private BlockingQueue<DetectedObject> objectQueue;
-    private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Speaker speaker;
-    //private Artist artist;
     private Thread speakerThread;
-//    private Thread artistThread;
+    private RectangleOverlayView rectangleOverlayView;
     private PreviewView previewView;
     int camFacing = CameraSelector.LENS_FACING_BACK;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
@@ -97,7 +105,23 @@ public class MainActivity extends AppCompatActivity  {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        LocalModel localModel =
+                new LocalModel.Builder()
+                        .setAssetFilePath("2.tflite")
+                        .build();
+
+        CustomObjectDetectorOptions customObjectDetectorOptions =
+                new CustomObjectDetectorOptions.Builder(localModel)
+                        .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
+                        .enableClassification()
+                        .setClassificationConfidenceThreshold(0.5f)
+                        .setMaxPerObjectLabelCount(1)
+                        .build();
+
+        objectDetector = ObjectDetection.getClient(customObjectDetectorOptions);
         previewView = findViewById(R.id.cameraPreview);
+        context = this;
+        rectangleOverlayView = findViewById(R.id.rectangle_overlay);
         previewView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -118,13 +142,11 @@ public class MainActivity extends AppCompatActivity  {
                                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         objectQueue = new LinkedBlockingQueue<>();
-        speaker = new Speaker(this,  10, objectQueue, previewView);
-        //artist = new Artist(this, previewView, objectQueue, mainHandler);
+        speaker = new Speaker(this,  5, objectQueue, previewView);
         speaker.onInit(0);
         speakerThread = new Thread(speaker);
-        //artistThread = new Thread(artist);
         speakerThread.start();
-        //artistThread.start();
+
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderFuture.addListener(() -> {
             try {
@@ -139,55 +161,77 @@ public class MainActivity extends AppCompatActivity  {
                 Log.e("CamerX Camera Provider", e.getMessage());
             }
         }, ContextCompat.getMainExecutor(this));
-
-
-        ObjectDetectorOptions options = new ObjectDetectorOptions.Builder()
-                .setDetectorMode(ObjectDetectorOptions.STREAM_MODE)
-                .enableClassification()
-                .build();
-
-        objectDetector = ObjectDetection.getClient(options);
     }
 
-    private void BindPreview(ProcessCameraProvider CameraProvider, Context context)
-    {
-        Preview preview = new Preview.Builder().build();
+    private void BindPreview(ProcessCameraProvider CameraProvider, Context context) {
+        float aspectRatio = (float) previewView.getWidth() / previewView.getHeight();
+
+        Preview preview = new Preview.Builder()
+                                     .setTargetResolution(new Size(1920, 1920))
+                                     .build();
         CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(camFacing).build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
         ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
-                                                        .setTargetResolution(targetResolution)
-                                                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                                        .build();
+                .setTargetResolution(new Size(1920, 1920))
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build();
 
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this),
                 new ImageAnalysis.Analyzer() {
-                    @ExperimentalGetImage @Override
+                    @ExperimentalGetImage
+                    @Override
                     public void analyze(@NonNull ImageProxy imageProxy) {
-                        int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
                         Image image = imageProxy.getImage();
-                        if(image != null){
-                            InputImage inputImage = InputImage.fromMediaImage(image, rotationDegrees);
-                            objectDetector.process(inputImage)
-                                    .addOnSuccessListener(detectedObjects -> {
-                                        for (DetectedObject object : detectedObjects) {
-                                            try {
-                                                if(ProjectHelper.checkDetectedObjectHasValidConfidence(object)){
-                                                    objectQueue.put(object);
+                        if (image != null) {
+                            InputImage inputImage = InputImage.fromMediaImage(image, imageProxy.getImageInfo().getRotationDegrees());
+                            float inputImageAspectRatio = (float) inputImage.getWidth() / inputImage.getHeight();
+                            Task<List<DetectedObject>> task = objectDetector.process(inputImage);
+                            Log.d("Object Detection", "Preview | W" + previewView.getWidth() + "| H" + previewView.getHeight() + "| AR" + aspectRatio);
+                            Log.d("Object Detection", "Input Image | W" + inputImage.getWidth() + "| H" + inputImage.getHeight() + "| AR" + aspectRatio);
+                            Log.d("Object Detection", "Image Proxy | W" + imageProxy.getWidth() + "| H" + imageProxy.getHeight() + "| AR" + aspectRatio);
+
+                            task.addOnSuccessListener(
+                                            new OnSuccessListener<List<DetectedObject>>() {
+                                                @Override
+                                                public void onSuccess(List<DetectedObject> detectedObjects) {
+                                                    if(!detectedObjects.isEmpty()){
+                                                        objectQueue.addAll(detectedObjects);
+                                                        Matrix mappingMatrix = ProjectHelper.getMappingMatrix(imageProxy, previewView);
+                                                        for(DetectedObject object : detectedObjects){
+                                                            //Rect adjustedBoundingBox = adjustBoundingBox(object.getBoundingBox(),inputImageAspectRatio ,aspectRatio);
+                                                            Rect boundingBox = ProjectHelper.mapBoundingBox(object.getBoundingBox(), mappingMatrix);
+
+                                                            rectangleOverlayView.updateRect(boundingBox);
+                                                            rectangleOverlayView.invalidate();
+                                                        }
+                                                    }
                                                 }
-                                            } catch (InterruptedException e) {
-                                                Log.e("Object Queue", e.getMessage());
                                             }
-                                        }
-                                        imageProxy.close();
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        Log.e("Object Detection", "Object Detection Failed: " + e.getMessage());
-                                        imageProxy.close();
-                                    });
+                                    )
+                                    .addOnFailureListener(
+                                            new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    Log.e("Object Detection", e.getMessage());
+                                                }
+                                            }
+                                    )
+                                    .addOnCompleteListener(
+                                            new OnCompleteListener<List<DetectedObject>>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<List<DetectedObject>> task) {
+                                                    imageProxy.close();
+                                                    image.close();
+                                                }
+                                            }
+                                    );
+
                         }
                     }
                 });
-        CameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector,imageAnalysis, preview);
+
+        CameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, imageAnalysis, preview);
     }
 
     @Override
@@ -195,6 +239,7 @@ public class MainActivity extends AppCompatActivity  {
         super.onDestroy();
         speaker.setRunning(false);
         stopSpeechRecognition();
+        objectDetector.close();
     }
 
     private void startSpeechRecognition() {
@@ -239,8 +284,15 @@ public class MainActivity extends AppCompatActivity  {
                         speaker.Destroy();
                         startActivity(intent);
 
-                    } else {
-                        speaker.speakText("I am sorry, I did not understand what you said");
+                    } else if(matches.contains("help")) {
+                        speaker.speakText("You can say 'read' to read text from the camera " +
+                                "or 'detect objects' to detect objects from the camera");
+                    } else if(matches.contains("battery life")) {
+                        float batteryLevel = ProjectHelper.getBatteryLevel(context);
+                        speaker.speakText("Your battery level is " + batteryLevel + " percent");
+                    }
+                    else {
+                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
                         Thread newSpeakerThread = new Thread(speaker);
                         newSpeakerThread.start();
                     }
@@ -262,7 +314,7 @@ public class MainActivity extends AppCompatActivity  {
 
     private void stopSpeechRecognition() {
         // Stop listening for speech
-        //speechRecognizer.stopListening();
+        speechRecognizer.stopListening();
     }
     private void startLongTouchTimer() {
         if (longTouchRunnable == null) {

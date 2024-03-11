@@ -7,16 +7,15 @@
     android:id="@+id/container"
     tools:context=".MainActivity">
 
-    <com.example.odsk00238061.utils.BoundingBox
-        android:id="@+id/bounding_box"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        app:layout_constraintStart_toStartOf="@id/cameraPreview"
-        app:layout_constraintEnd_toEndOf="@id/cameraPreview" />
-
     <androidx.camera.view.PreviewView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/cameraPreview" />
+
+
+    <com.example.odsk00238061.utils.RectangleOverlayView
+        android:id="@+id/rectangle_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </RelativeLayout>

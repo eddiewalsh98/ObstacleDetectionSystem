@@ -20,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Speaker implements Runnable,TextToSpeech.OnInitListener {
     private boolean isRunning = true;
-    private static final String FILENAME = "directions.txt";
     private TextToSpeech textToSpeech;
     private PreviewView view;
     private Context context;
@@ -105,7 +104,7 @@ public class Speaker implements Runnable,TextToSpeech.OnInitListener {
     public void addObstacle(DetectedObject object) {
         try{
             String objectLocation = ProjectHelper.calculateObstacleLocation(object.getBoundingBox(), view.getWidth());
-            String obstacleLabel = ProjectHelper.getLabelWithHighestConfidence(object.getLabels());
+            String obstacleLabel = object.getLabels().get(0).getText();
             Obstacle obstacle = new Obstacle(object.getTrackingId(), obstacleLabel ,objectLocation, 0);
             obstacleDictionary.put(obstacle.getObstacleID(), obstacle);
             Log.d("AddObstacle", obstacle.getObstacleName() + " added to the dictionary!");

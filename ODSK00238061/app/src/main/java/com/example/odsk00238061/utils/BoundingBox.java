@@ -16,7 +16,6 @@ public class BoundingBox extends View {
     private String label;
     private Paint boxpaint;
     private Paint textpaint;
-    private float postScaleHeightOffset;
 
     public BoundingBox(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -45,21 +44,6 @@ public class BoundingBox extends View {
         if(checkLocationandLabel()){
             canvas.drawRect(location.left, location.top, location.right, location.bottom, boxpaint);
             canvas.drawText(label, location.centerX(),location.centerY(), textpaint);
-        }
-    }
-
-
-    public void setLocation(Rect loc) {
-        if (loc != null) {
-            if(location == null){
-                location = new Rect();
-            }
-
-            this.location.top = loc.top;
-            this.location.bottom = loc.bottom;
-            this.location.left = loc.left;
-            this.location.right = loc.right;
-            invalidate();
         }
     }
 
