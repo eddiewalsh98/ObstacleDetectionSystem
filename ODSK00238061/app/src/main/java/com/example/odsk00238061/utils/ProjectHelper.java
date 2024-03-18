@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.view.PreviewView;
 
+import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.objects.DetectedObject;
 
 import java.text.DateFormat;
@@ -142,6 +143,19 @@ public class ProjectHelper {
 
         float batteryPct = (level / (float) scale) * 100;
         return batteryPct;
+    }
+
+    public static Rect updateBoundingBoxBasedOnPreview(Rect boundingbox, PreviewView view, InputImage inputImage) {
+        float scaleX = (float) view.getWidth() / inputImage.getWidth();
+        float scaleY = (float) view.getHeight() / inputImage.getHeight();
+
+        int scaledLeft = (int) (boundingbox.left * scaleX);
+        int scaledTop = (int) (boundingbox.top * scaleY);
+        int scaledRight = (int) (boundingbox.right * scaleX);
+        int scaledBottom = (int) (boundingbox.bottom * scaleY);
+
+        // Create a new Rect with scaled coordinates
+        return new Rect(scaledLeft, scaledTop, scaledRight, scaledBottom);
     }
 
 }

@@ -3,6 +3,8 @@ package com.example.odsk00238061.utils;
 import android.graphics.Rect;
 import android.view.View;
 
+import com.google.mlkit.vision.objects.DetectedObject;
+
 public class Obstacle {
 
     private Integer obstacleID;
@@ -13,9 +15,24 @@ public class Obstacle {
 
     private Integer obstacleOccurence;
 
+    private Rect obstacleRect;
+
     private Boolean isObstacle;
 
     public Obstacle(){ }
+
+    public Obstacle(DetectedObject object){
+        if(object.getLabels().isEmpty()) {
+            this.obstacleName = "Unknown Obstacle";
+        } else {
+            this.obstacleName = object.getLabels().get(1).getText();
+        }
+        this.obstacleID = object.getTrackingId();
+        this.obstacleRect = object.getBoundingBox();
+        this.obstacleOccurence = 0;
+        this.obstacleLocation = calculateObstacleLocation(obstacleRect, 1080);
+        this.isObstacle = true;
+    }
 
     public Obstacle(Integer obstacleID, String obstacleName, String obstacleLocation, Integer obstacleOccurence){
         this.obstacleID = obstacleID;
@@ -47,6 +64,14 @@ public class Obstacle {
 
     public void setObstacleLocation(String obstacleLocation){
         this.obstacleLocation = obstacleLocation;
+    }
+
+    public void setObstacleLocation(Rect obstacle) {
+        this.obstacleRect = obstacle;
+    }
+
+    public Rect getObstacleRect() {
+        return obstacleRect;
     }
 
     public Integer getObstacleOccurence(){

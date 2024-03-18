@@ -128,7 +128,7 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                 }
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace(); // Handle exceptions as needed
-                Log.e("CamerX Camera Provider", e.getMessage());
+                Log.e("CameraX Camera Provider", e.getMessage());
             }
         }, ContextCompat.getMainExecutor(this));
     }
@@ -237,7 +237,6 @@ public class TextToSpeechActivity extends AppCompatActivity  {
             public void onError(int error) {
 
             }
-
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
@@ -245,11 +244,16 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                     if(matches.contains("read")){
                         readText = true;
                     } else if(matches.contains("detect objects")){
-                        Intent intent = new Intent(TextToSpeechActivity.this, MainActivity.class);
+                        Intent intent = new Intent(TextToSpeechActivity.this, ObjectDetectionActivity.class);
                         speaker.Destroy();
                         startActivity(intent);
 
-                    } else if(matches.contains("help")){
+                    } else if(matches.contains("record voice memo")){
+                        Intent intent = new Intent(TextToSpeechActivity.this, VoiceMemoActivity.class);
+                        speaker.Destroy();
+                        startActivity(intent);
+                    }
+                    else if(matches.contains("help")){
                         speaker.speakText("You can say 'read' to read text from the camera " +
                                 "or 'detect objects' to detect objects from the camera");
                     } else{

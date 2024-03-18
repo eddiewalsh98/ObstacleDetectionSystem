@@ -1,21 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/container"
-    tools:context=".MainActivity">
+    android:background="@android:color/transparent">
 
-    <androidx.camera.view.PreviewView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/cameraPreview" />
-
-
-    <com.example.odsk00238061.utils.RectangleOverlayView
-        android:id="@+id/rectangle_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
 
 </RelativeLayout>

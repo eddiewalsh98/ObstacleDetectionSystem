@@ -32,6 +32,20 @@
                 <action android:name="android.intent.action.TTS_SERVICE" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ObjectDetectionActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.OBJECT_DETECTION" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".VoiceMemoActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_MEMO" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
