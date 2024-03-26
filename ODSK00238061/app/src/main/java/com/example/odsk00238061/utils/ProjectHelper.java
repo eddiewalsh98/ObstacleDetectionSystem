@@ -7,6 +7,8 @@ import android.content.IntentFilter;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.os.BatteryManager;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageProxy;
@@ -40,6 +42,18 @@ public class ProjectHelper {
             }
         }
         return maxLabel;
+    }
+
+    public static void vibrate(Context context, long milliseconds) {
+        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                // Deprecated in API 26
+                vibrator.vibrate(milliseconds);
+            }
+        }
     }
 
     public static String calculateObstacleLocation(Rect rect, int pWidth){

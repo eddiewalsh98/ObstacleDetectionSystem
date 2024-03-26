@@ -178,6 +178,10 @@ public class MainActivity extends AppCompatActivity  {
                         speaker.Destroy();
                         startActivity(intent);
 
+                    } else if(matches.contains("barcode")){
+                        Intent intent = new Intent(MainActivity.this, BarcodeScannerActivity.class);
+                        speaker.Destroy();
+                        startActivity(intent);
                     } else if(matches.contains("play record memo")) {
                         ContextWrapper contextWrapper = new ContextWrapper(getApplicationContext());
                         File memoDirectory = contextWrapper.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
@@ -193,7 +197,7 @@ public class MainActivity extends AppCompatActivity  {
                             speaker.speakText("I'm sorry, I couldn't play the memo. Please try again");
                         }
 
-                    } else if(matches.contains("obstacles")) {
+                    } else if(matches.contains("detect obstacles")) {
                         Intent intent = new Intent(MainActivity.this, ObjectDetectionActivity.class);
                         speaker.Destroy();
                         startActivity(intent);

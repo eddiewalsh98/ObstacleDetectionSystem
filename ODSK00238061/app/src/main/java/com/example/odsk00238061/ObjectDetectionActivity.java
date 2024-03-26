@@ -1,26 +1,18 @@
 package com.example.odsk00238061;
 
-import static androidx.camera.core.AspectRatio.RATIO_4_3;
-
 import android.Manifest;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.media.Image;
-import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
-import android.util.Rational;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.View;
@@ -31,7 +23,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.AspectRatio;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ExperimentalGetImage;
 import androidx.camera.core.ImageAnalysis;
@@ -59,13 +50,9 @@ import com.google.mlkit.vision.objects.ObjectDetection;
 import com.google.mlkit.vision.objects.ObjectDetector;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class ObjectDetectionActivity extends AppCompatActivity {
     private static final int TOUCH_DURATION_THRESHOLD = 3000; // 3 seconds
@@ -117,14 +104,14 @@ public class ObjectDetectionActivity extends AppCompatActivity {
         setContentView(R.layout.activity_object_detection);
         LocalModel localModel =
                 new LocalModel.Builder()
-                        .setAssetFilePath("1.tflite")
+                        .setAssetFilePath("2.tflite")
                         .build();
 
         CustomObjectDetectorOptions customObjectDetectorOptions =
                 new CustomObjectDetectorOptions.Builder(localModel)
                         .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
                         .enableClassification()
-                        .setClassificationConfidenceThreshold(0.7f)
+                        .setClassificationConfidenceThreshold(0.5f)
                         .setMaxPerObjectLabelCount(3)
                         .build();
 
@@ -146,7 +133,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 return true;
             }
         });
-        ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
         intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -159,7 +146,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
-                if(ContextCompat.checkSelfPermission(ObjectDetectionActivity.this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+                if(ContextCompat.checkSelfPermission(ObjectDetectionActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
                     activityResultLauncher.launch(Manifest.permission.CAMERA);
                 } else{
                     BindPreview(cameraProvider);
@@ -215,7 +202,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                                                         Rect boundingBox = ProjectHelper.mapBoundingBox(object.getBoundingBox(), mappingMatrix);
                                                         rectangleOverlayView.updateRect(boundingBox);
                                                         rectangleOverlayView.invalidate();
-
                                                     }
                                                 }
                                             }

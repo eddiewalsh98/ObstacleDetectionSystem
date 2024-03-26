@@ -14,12 +14,14 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.OptIn;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ExperimentalGetImage;
@@ -32,38 +34,48 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+import com.example.odsk00238061.utils.ProjectHelper;
 import com.example.odsk00238061.utils.Speaker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.barcode.BarcodeScanner;
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
+import com.google.mlkit.vision.barcode.BarcodeScanning;
+import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.objects.ObjectDetector;
-import com.google.mlkit.vision.text.Text;
-import com.google.mlkit.vision.text.TextRecognition;
-import com.google.mlkit.vision.text.TextRecognizer;
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-public class TextToSpeechActivity extends AppCompatActivity  {
+public class BarcodeScannerActivity extends AppCompatActivity {
 
-    int camFacing = CameraSelector.LENS_FACING_BACK;
-    private ImageAnalysis imageAnalysis;
     private Intent intentRecognizer;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private ProcessCameraProvider cameraProvider;
     private SpeechRecognizer speechRecognizer;
-    private TextRecognizer textRecognizer;
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
     private Handler handler = new Handler();
     private Runnable longTouchRunnable;
-    private PreviewView previewView;
     private Speaker speaker;
+    private int camFacing = CameraSelector.LENS_FACING_BACK;
+    private PreviewView previewView;
+    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private ProcessCameraProvider cameraProvider;
     private Context context;
-    private boolean readText = false;
+    private BarcodeScanner barcodeScanner;
+    private boolean getBarcode = false;
+
+    private String barcode_UPC = "";
 
     private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
@@ -80,22 +92,36 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                                 e.printStackTrace();
                                 Log.e("CameraX Camera Provider", e.getMessage());
                             }
-                        }, ContextCompat.getMainExecutor(TextToSpeechActivity.this));
+                        }, ContextCompat.getMainExecutor(BarcodeScannerActivity.this));
                     } else {
-                        Toast.makeText(TextToSpeechActivity.this, "Camera permission is required to use the camera", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BarcodeScannerActivity.this, "Camera permission is required to use the camera", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
     );
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_textspeech);
-        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        setContentView(R.layout.activity_barcodescanner);
+        previewView = findViewById(R.id.cameraPreview);
         context = this;
-        previewView = findViewById(R.id.textCameraView);
         speaker = new Speaker(this);
+        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        BarcodeScannerOptions options =
+                new BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(
+                                Barcode.FORMAT_UPC_A,
+                                Barcode.FORMAT_UPC_E)
+                        .build();
+
+        barcodeScanner = BarcodeScanning.getClient(options);
+
         previewView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -110,19 +136,13 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                 return true;
             }
         });
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},PackageManager.PERMISSION_GRANTED);
-        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
 
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
-                if(ContextCompat.checkSelfPermission(TextToSpeechActivity.this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+                if (ContextCompat.checkSelfPermission(BarcodeScannerActivity.this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                     activityResultLauncher.launch(Manifest.permission.CAMERA);
-                } else{
+                } else {
                     setupCameraAndBindPreview(cameraProvider, this);
                 }
             } catch (ExecutionException | InterruptedException e) {
@@ -130,60 +150,63 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                 Log.e("CameraX Camera Provider", e.getMessage());
             }
         }, ContextCompat.getMainExecutor(this));
+
+
     }
 
-    public void setupCameraAndBindPreview(ProcessCameraProvider cameraProvider, Context context) {
+    private void setupCameraAndBindPreview(ProcessCameraProvider cameraProvider, Context context) {
         Preview preview = new Preview.Builder().build();
         CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(camFacing).build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
-        imageAnalysis = new ImageAnalysis.Builder()
+        ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build();
 
-        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this),
-                new ImageAnalysis.Analyzer() {
-                    @OptIn(markerClass = ExperimentalGetImage.class) @Override
-                    public void analyze(@NonNull ImageProxy imageProxy) {
-                        int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
-                        Image image = imageProxy.getImage();
-                        if (image != null) {
-                            InputImage inputImage = InputImage.fromMediaImage(image, rotationDegrees);
-                            detectTextFromImage(inputImage, imageProxy);
-                        }
-                    }
-
-                });
-        cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector,imageAnalysis, preview);
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), new ImageAnalysis.Analyzer() {
+            @ExperimentalGetImage
+            @Override
+            public void analyze(@NonNull ImageProxy imageProxy) {
+                int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
+                Image image = imageProxy.getImage();
+                if (image != null) {
+                    InputImage inputImage = InputImage.fromMediaImage(image, rotationDegrees);
+                    detectBarcodeFromImage(inputImage, imageProxy);
+                }
+            }
+        });
+        cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, imageAnalysis, preview);
     }
 
-    public void detectTextFromImage(InputImage inputImage, ImageProxy imageProxy) {
-        if (readText) {
-            textRecognizer.process(inputImage)
-                    .addOnSuccessListener(new OnSuccessListener<Text>() {
+    public void detectBarcodeFromImage(InputImage inputImage, ImageProxy imageProxy) {
+        if (getBarcode) {
+            barcodeScanner.process(inputImage)
+                    .addOnSuccessListener(new OnSuccessListener<List<Barcode>>() {
                         @Override
-                        public void onSuccess(Text visionText) {
-                            String text = visionText.getText();
-                            speaker.speakText(text);
+                        public void onSuccess(List<Barcode> barcodes) {
+                            for (Barcode barcode : barcodes) {
+                                ProjectHelper.vibrate(BarcodeScannerActivity.this, 1000);
+                                Intent intent = new Intent(BarcodeScannerActivity.this, ProductDetailsActivity.class);
+                                intent.putExtra("barcode", barcode.getRawValue());
+                                startActivity(intent);
+                            }
                         }
                     })
                     .addOnFailureListener(new OnFailureListener() {
                         @Override
                         public void onFailure(@NonNull Exception e) {
-                            Log.d("TextToSpeechActivity", "onFailure: " + e.getMessage());
-                            speaker.speakText(e.getMessage());
+                            Log.e("BarcodeScanner", e.getMessage());
                         }
                     })
-                    .addOnCompleteListener(new OnCompleteListener<Text>() {
+                    .addOnCompleteListener(new OnCompleteListener<List<Barcode>>() {
                         @Override
-                        public void onComplete(@NonNull Task<Text> task) {
+                        public void onComplete(@NonNull Task<List<Barcode>> task) {
                             imageProxy.close();
-                            readText = false;
+                            getBarcode = false;
                         }
                     });
-        } else{
+        } else {
             imageProxy.close();
         }
-
     }
 
     private void startLongTouchTimer() {
@@ -204,6 +227,7 @@ public class TextToSpeechActivity extends AppCompatActivity  {
             longTouchRunnable = null;
         }
     }
+
 
     private void startSpeechRecognition() {
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
@@ -236,26 +260,26 @@ public class TextToSpeechActivity extends AppCompatActivity  {
             public void onError(int error) {
 
             }
+
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if(matches != null){
-                    if(matches.contains("read")){
-                        readText = true;
-                    } else if(matches.contains("detect objects")){
-                        Intent intent = new Intent(TextToSpeechActivity.this, ObjectDetectionActivity.class);
+                if (matches != null) {
+                    if (matches.contains("get product")) {
+                        getBarcode = true;
+                    } else if (matches.contains("detect objects")) {
+                        Intent intent = new Intent(BarcodeScannerActivity.this, ObjectDetectionActivity.class);
                         speaker.Destroy();
                         startActivity(intent);
 
-                    } else if(matches.contains("record voice memo")){
-                        Intent intent = new Intent(TextToSpeechActivity.this, VoiceMemoActivity.class);
+                    } else if (matches.contains("record voice memo")) {
+                        Intent intent = new Intent(BarcodeScannerActivity.this, VoiceMemoActivity.class);
                         speaker.Destroy();
                         startActivity(intent);
-                    }
-                    else if(matches.contains("help")){
+                    } else if (matches.contains("help")) {
                         speaker.speakText("You can say 'read' to read text from the camera " +
                                 "or 'detect objects' to detect objects from the camera");
-                    } else{
+                    } else {
                         speaker.speakText("I'm sorry, I didn't get that. Please try again");
                     }
                 }

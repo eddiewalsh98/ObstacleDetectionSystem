@@ -5,6 +5,9 @@
     <uses-feature android:name="android.hardware.camera" />
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
 
     <application
         android:allowBackup="true"
@@ -44,6 +47,20 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VOICE_MEMO" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".BarcodeScannerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BARCODE_SCANNER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ProductDetailsActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PRODUCT_DETAIL" />
             </intent-filter>
         </activity>
     </application>
