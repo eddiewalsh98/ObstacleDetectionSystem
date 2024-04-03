@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -35,7 +36,6 @@ import java.util.ArrayList;
 public class ProductDetailsActivity extends AppCompatActivity {
 
     private Context context;
-    private Intent intentRecognizer;
     private SpeechRecognizer speechRecognizer;
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
     private Handler handler = new Handler();
@@ -86,29 +86,16 @@ public class ProductDetailsActivity extends AppCompatActivity {
 
     private void executeOnStartLogic() {
         if (!hasExecuted) {
-            if (productName != "" && productDescription != "" && speaker != null) {
-                speaker.speakText("The product name is " + productName);
-                speaker.speakText("The ingredients include " + productDescription);
-            } else {
-                if (speaker != null) {
-
-                } else {
-                    Log.e("YourActivity", "Speaker is not initialized");
+            TextToSpeech tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                @Override
+                public void onInit(int status) {
+                    if (status == TextToSpeech.SUCCESS) {
+                        speaker.speakText("The product name is " + productName);
+                    }
                 }
-            }
-            // Set the flag to true to ensure this logic is executed only once
-            hasExecuted = true;
-        }
-    }
+            });
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if(productName != "") {
-            speaker.speakText("The product name is" + productName);
-            speaker.speakText("The incredients include " + productDescription);
-        } else {
-            speaker.speakText("Sorry, I could not find the product details");
+            hasExecuted = true;
         }
     }
 
@@ -128,8 +115,6 @@ public class ProductDetailsActivity extends AppCompatActivity {
                                 productDescription = product.optString("ingredients");
                                 productNameTextView.setText(productName);
                                 productDescriptionTextView.setText(productDescription);
-                            } else {
-
                             }
                         } catch (JSONException e) {
                             Log.d("ProductDetailsActivity", "Error: " + e.getMessage());
@@ -199,40 +184,10 @@ public class ProductDetailsActivity extends AppCompatActivity {
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-
-                if(matches.contains("yes") || matches.contains("repeat")) {
-                    if(productName != "") {
-                        speaker.speakText("The product name is" + productName);
-                        speaker.speakText("The incredients include " + productDescription);
-                    } else {
-                        speaker.speakText("Sorry, I could not find the product details");
-                    }
-                } else if(matches.contains("no")) {
-                    speaker.speakText("Okay, let me know if you need any help");
-                } else if(matches.contains("detect obstacles")){
-                    Intent intent = new Intent(ProductDetailsActivity.this, ObjectDetectionActivity.class);
-                    speaker.Destroy();
-                    startActivity(intent);
-                } else if(matches.contains("text to speech")){
-                    Intent intent = new Intent(ProductDetailsActivity.this, TextToSpeechActivity.class);
-                    speaker.Destroy();
-                    startActivity(intent);
-                } else if(matches.contains("barcode")) {
-                    Intent intent = new Intent(ProductDetailsActivity.this, BarcodeScannerActivity.class);
-                    speaker.Destroy();
-                    startActivity(intent);
-                } else if(matches.contains("battery life")) {
-                    float batteryLevel = ProjectHelper.getBatteryLevel(context);
-                    speaker.speakText("Your battery level is " + batteryLevel + " percent");
-                } else if(matches.contains("help")) {
-                    speaker.speakText("You can say 'read' to read text from the camera " +
-                            "or 'detect objects' to detect objects from the camera");
-                } else if(matches.contains("record voice memo")) {
-                    Intent intent = new Intent(ProductDetailsActivity.this, VoiceMemoActivity.class);
-                    speaker.Destroy();
-                    startActivity(intent);
-                } else {
-                    speaker.speakText("Sorry, I did not understand that");
+                if(matches == null){
+                    speaker.speakText("I'm sorry, I didn't quite catch that. Please try again.");
+                } else{
+//                    if(matches.contains(""))
                 }
             }
 

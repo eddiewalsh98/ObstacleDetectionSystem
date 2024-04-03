@@ -1,5 +1,7 @@
 package com.example.odsk00238061;
 
+import static com.example.odsk00238061.utils.ProjectHelper.vibrate;
+
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -35,6 +37,7 @@ import android.provider.MediaStore;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
@@ -74,11 +77,9 @@ public class MainActivity extends AppCompatActivity  {
     private final Handler handler = new Handler();
     private Runnable longTouchRunnable;
     private SpeechRecognizer speechRecognizer;
-    private MediaPlayer mediaPlayer;
     private Intent intentRecognizer;
     private Speaker speaker;
     private Context context;
-
     private RelativeLayout relativeLayout;
 
     @SuppressLint("ClickableViewAccessibility")
@@ -86,9 +87,18 @@ public class MainActivity extends AppCompatActivity  {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        vibrate(this, 1000);
 
         relativeLayout = findViewById(R.id.layout);
         context = this;
+
+        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+
+        speaker = new Speaker(this);
+
         relativeLayout.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -103,18 +113,17 @@ public class MainActivity extends AppCompatActivity  {
                 return true;
             }
         });
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},PackageManager.PERMISSION_GRANTED);
-        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-        speaker = new Speaker(this);
-    }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        speaker.speakText("Welcome to the ODS application. Hold down on the screen to speak and say 'help' to get a list of commands.");
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},PackageManager.PERMISSION_GRANTED);
+
+        TextToSpeech tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    speaker.speakText("Welcome to the ODS application. Hold down on the screen to speak and say 'help' to get a list of commands.");
+                }
+            }
+        });
     }
 
     @Override
@@ -158,54 +167,8 @@ public class MainActivity extends AppCompatActivity  {
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if(matches != null){
-                    if(matches.contains("text to speech")){
-                        Intent intent = new Intent(MainActivity.this, TextToSpeechActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    } else if(matches.contains("help")) {
-                        speaker.speakText("To use the application, you can say 'text to speech' to convert text to speech, " +
-                                "'read' to read text from the camera, 'battery life' to check your battery level, " +
-                                "'record voice memo' to record a 20 second voice memo, 'play record memo' to play the recorded memo, " +
-                                "and 'detect objects' to detect objects in the camera view. Hold down on the screen to speak.");
-
-                    } else if(matches.contains("battery life")) {
-                        float batteryLevel = ProjectHelper.getBatteryLevel(context);
-                        speaker.speakText("Your battery level is " + batteryLevel + " percent");
-
-                    } else if(matches.contains("record voice memo")) {
-                        Intent intent = new Intent(MainActivity.this, VoiceMemoActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-
-                    } else if(matches.contains("barcode")){
-                        Intent intent = new Intent(MainActivity.this, BarcodeScannerActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    } else if(matches.contains("play record memo")) {
-                        ContextWrapper contextWrapper = new ContextWrapper(getApplicationContext());
-                        File memoDirectory = contextWrapper.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
-                        File file = new File(memoDirectory, "ODSRecordingFile" + ".mp3");
-
-                        try {
-                            mediaPlayer = new MediaPlayer();
-                            mediaPlayer.setDataSource(file.getPath());
-                            mediaPlayer.prepare();
-                            mediaPlayer.start();
-                        } catch (IOException e) {
-                            Log.d("PlayMemo", e.getMessage());
-                            speaker.speakText("I'm sorry, I couldn't play the memo. Please try again");
-                        }
-
-                    } else if(matches.contains("detect obstacles")) {
-                        Intent intent = new Intent(MainActivity.this, ObjectDetectionActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    }
-                    else {
-                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
-
-                    }
+                if (matches != null) {
+                    ProjectHelper.handleCommands(matches, MainActivity.this, speaker, context);
                 }
             }
 

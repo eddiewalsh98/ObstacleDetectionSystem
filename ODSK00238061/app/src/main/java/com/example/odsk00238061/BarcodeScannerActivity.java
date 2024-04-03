@@ -1,5 +1,7 @@
 package com.example.odsk00238061;
 
+import static com.example.odsk00238061.utils.ProjectHelper.*;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
@@ -10,12 +12,11 @@ import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -34,10 +35,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.odsk00238061.utils.ProjectHelper;
 import com.example.odsk00238061.utils.Speaker;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -51,16 +48,11 @@ import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.common.InputImage;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 public class BarcodeScannerActivity extends AppCompatActivity {
-
     private Intent intentRecognizer;
     private SpeechRecognizer speechRecognizer;
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
@@ -73,7 +65,7 @@ public class BarcodeScannerActivity extends AppCompatActivity {
     private ProcessCameraProvider cameraProvider;
     private Context context;
     private BarcodeScanner barcodeScanner;
-    private boolean getBarcode = false;
+    private boolean getBarcode = true;
 
     private String barcode_UPC = "";
 
@@ -104,11 +96,12 @@ public class BarcodeScannerActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_barcodescanner);
+        vibrate(this, 1000);
         previewView = findViewById(R.id.cameraPreview);
         context = this;
         speaker = new Speaker(this);
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+        ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
         intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -151,7 +144,14 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             }
         }, ContextCompat.getMainExecutor(this));
 
-
+        TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    speaker.speakText("Barcode scanner is open, hold your device over the barcode.");
+                }
+            }
+        });
     }
 
     private void setupCameraAndBindPreview(ProcessCameraProvider cameraProvider, Context context) {
@@ -178,34 +178,32 @@ public class BarcodeScannerActivity extends AppCompatActivity {
     }
 
     public void detectBarcodeFromImage(InputImage inputImage, ImageProxy imageProxy) {
-        if (getBarcode) {
-            barcodeScanner.process(inputImage)
-                    .addOnSuccessListener(new OnSuccessListener<List<Barcode>>() {
-                        @Override
-                        public void onSuccess(List<Barcode> barcodes) {
-                            for (Barcode barcode : barcodes) {
-                                ProjectHelper.vibrate(BarcodeScannerActivity.this, 1000);
-                                Intent intent = new Intent(BarcodeScannerActivity.this, ProductDetailsActivity.class);
-                                intent.putExtra("barcode", barcode.getRawValue());
-                                startActivity(intent);
-                            }
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            Log.e("BarcodeScanner", e.getMessage());
-                        }
-                    })
-                    .addOnCompleteListener(new OnCompleteListener<List<Barcode>>() {
-                        @Override
-                        public void onComplete(@NonNull Task<List<Barcode>> task) {
-                            imageProxy.close();
+    if (getBarcode) {
+        barcodeScanner.process(inputImage)
+                .addOnSuccessListener(new OnSuccessListener<List<Barcode>>() {
+                    @Override
+                    public void onSuccess(List<Barcode> barcodes) {
+                        if (!barcodes.isEmpty()) {
                             getBarcode = false;
+                            vibrate(BarcodeScannerActivity.this, 1000);
+                            Intent intent = new Intent(BarcodeScannerActivity.this, ProductDetailsActivity.class);
+                            intent.putExtra("barcode", barcodes.get(0).getRawValue());
+                            startActivity(intent);
                         }
-                    });
-        } else {
-            imageProxy.close();
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e("BarcodeScanner", e.getMessage());
+                    }
+                })
+                .addOnCompleteListener(new OnCompleteListener<List<Barcode>>() {
+                    @Override
+                    public void onComplete(@NonNull Task<List<Barcode>> task) {
+                        imageProxy.close();
+                    }
+                });
         }
     }
 
@@ -265,23 +263,8 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null) {
-                    if (matches.contains("get product")) {
-                        getBarcode = true;
-                    } else if (matches.contains("detect objects")) {
-                        Intent intent = new Intent(BarcodeScannerActivity.this, ObjectDetectionActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-
-                    } else if (matches.contains("record voice memo")) {
-                        Intent intent = new Intent(BarcodeScannerActivity.this, VoiceMemoActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    } else if (matches.contains("help")) {
-                        speaker.speakText("You can say 'read' to read text from the camera " +
-                                "or 'detect objects' to detect objects from the camera");
-                    } else {
-                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
-                    }
+                     ProjectHelper.handleCommands(matches, BarcodeScannerActivity.this,
+                                                  speaker, context);
                 }
             }
 

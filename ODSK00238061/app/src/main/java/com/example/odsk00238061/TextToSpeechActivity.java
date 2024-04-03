@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -32,6 +33,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.example.odsk00238061.utils.ProjectHelper;
 import com.example.odsk00238061.utils.Speaker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -54,6 +56,7 @@ public class TextToSpeechActivity extends AppCompatActivity  {
     private ImageAnalysis imageAnalysis;
     private Intent intentRecognizer;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private ObjectDetector objectDetector;
     private ProcessCameraProvider cameraProvider;
     private SpeechRecognizer speechRecognizer;
     private TextRecognizer textRecognizer;
@@ -130,6 +133,14 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                 Log.e("CameraX Camera Provider", e.getMessage());
             }
         }, ContextCompat.getMainExecutor(this));
+        TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    speaker.speakText("Text to speech is open, hold your device over the piece of text.");
+                }
+            }
+        });
     }
 
     public void setupCameraAndBindPreview(ProcessCameraProvider cameraProvider, Context context) {
@@ -242,21 +253,8 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                 if(matches != null){
                     if(matches.contains("read")){
                         readText = true;
-                    } else if(matches.contains("detect objects")){
-                        Intent intent = new Intent(TextToSpeechActivity.this, ObjectDetectionActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-
-                    } else if(matches.contains("record voice memo")){
-                        Intent intent = new Intent(TextToSpeechActivity.this, VoiceMemoActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    }
-                    else if(matches.contains("help")){
-                        speaker.speakText("You can say 'read' to read text from the camera " +
-                                "or 'detect objects' to detect objects from the camera");
-                    } else{
-                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
+                    } else {
+                        ProjectHelper.handleCommands(matches, TextToSpeechActivity.this, speaker, context);
                     }
                 }
             }

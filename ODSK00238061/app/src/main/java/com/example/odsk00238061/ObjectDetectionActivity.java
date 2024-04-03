@@ -4,7 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Matrix;
+import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.media.Image;
 import android.os.Bundle;
@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.util.Size;
 import android.view.MotionEvent;
@@ -35,6 +36,7 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.example.odsk00238061.utils.Obstacle;
+import com.example.odsk00238061.utils.PositionTranslator;
 import com.example.odsk00238061.utils.ProjectHelper;
 import com.example.odsk00238061.utils.RectangleOverlayView;
 import com.example.odsk00238061.utils.Speaker;
@@ -50,6 +52,7 @@ import com.google.mlkit.vision.objects.ObjectDetection;
 import com.google.mlkit.vision.objects.ObjectDetector;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -60,7 +63,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     private Runnable longTouchRunnable;
     private SpeechRecognizer speechRecognizer;
     private Intent intentRecognizer;
-    //private BlockingQueue<DetectedObject> objectQueue;
     private Speaker speaker;
     private Thread speakerThread;
     private RectangleOverlayView rectangleOverlayView;
@@ -102,23 +104,33 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_object_detection);
+        previewView = findViewById(R.id.cameraPreview);
+        context = this;
+        rectangleOverlayView = findViewById(R.id.rectangle_overlay);
+        ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        speaker = new Speaker(this, previewView);
+        speakerThread = new Thread(speaker);
+        speakerThread.start();
+
         LocalModel localModel =
                 new LocalModel.Builder()
-                        .setAssetFilePath("2.tflite")
+                        .setAssetFilePath("1.tflite")
                         .build();
 
         CustomObjectDetectorOptions customObjectDetectorOptions =
                 new CustomObjectDetectorOptions.Builder(localModel)
                         .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
                         .enableClassification()
-                        .setClassificationConfidenceThreshold(0.5f)
-                        .setMaxPerObjectLabelCount(3)
+                        .setClassificationConfidenceThreshold(0.6f)
+                        .setMaxPerObjectLabelCount(1)
                         .build();
 
         objectDetector = ObjectDetection.getClient(customObjectDetectorOptions);
-        previewView = findViewById(R.id.cameraPreview);
-        context = this;
-        rectangleOverlayView = findViewById(R.id.rectangle_overlay);
+
         previewView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -133,20 +145,12 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 return true;
             }
         });
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
-        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-        speaker = new Speaker(this, previewView);
-        speakerThread = new Thread(speaker);
-        speakerThread.start();
 
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
-                if(ContextCompat.checkSelfPermission(ObjectDetectionActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+                if(ContextCompat.checkSelfPermission(ObjectDetectionActivity.this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
                     activityResultLauncher.launch(Manifest.permission.CAMERA);
                 } else{
                     BindPreview(cameraProvider);
@@ -156,14 +160,22 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 Log.e("CamerX Camera Provider", e.getMessage());
             }
         }, ContextCompat.getMainExecutor(this));
+        TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    speaker.speakText("Obstacle Detection has begun. Hold your device in front of you.");
+                }
+            }
+        });
     }
 
     private void BindPreview(ProcessCameraProvider CameraProvider) {
-        speaker.speakText("Please hold phone in front of you to detect obstacles");
+
         Size targetResolution = new Size(360,800 );
 
         preview = new Preview.Builder()
-                //.setTargetResolution(targetResolution)
+                .setTargetResolution(targetResolution)
                 .build();
 
 
@@ -179,29 +191,46 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build();
 
+
+        PositionTranslator positionTranslator = new PositionTranslator(224, 224,
+                                                                        previewView.getWidth(),
+                                                                        previewView.getHeight(),
+                                                            0);
+
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this),
-                new ImageAnalysis.Analyzer() {
+                new ImageAnalysis.Analyzer()
+                {
                     @ExperimentalGetImage
                     @Override
                     public void analyze(@NonNull ImageProxy imageProxy) {
                         Image image = imageProxy.getImage();
                         Log.d("ImageProxy", imageProxy.getWidth() + "x" + imageProxy.getHeight());
                         if (image != null) {
-                            InputImage inputImage = InputImage.fromMediaImage(image, imageProxy.getImageInfo().getRotationDegrees());
+
+                            Bitmap bitmap = imageProxy.toBitmap();
+
+                            bitmap = ProjectHelper.resizeBitmap(bitmap, 224);
+
+                            InputImage inputImage = InputImage.fromBitmap(bitmap, imageProxy.getImageInfo().getRotationDegrees());
 
                             Task<List<DetectedObject>> task = objectDetector.process(inputImage);
+
                             task.addOnSuccessListener(
                                             new OnSuccessListener<List<DetectedObject>>() {
                                                 @Override
                                                 public void onSuccess(List<DetectedObject> detectedObjects) {
                                                     if(!detectedObjects.isEmpty()){
                                                         DetectedObject object = detectedObjects.get(0);
-                                                        Obstacle obstacle = new Obstacle(object);
+
+                                                        Rect boundingBox = positionTranslator.translateBoundingBox(object.getBoundingBox());
+                                                        Obstacle obstacle = new Obstacle(object, boundingBox, previewView.getWidth());
+
                                                         speaker.processDetectedObject(obstacle);
-                                                        Matrix mappingMatrix = ProjectHelper.getMappingMatrix(imageProxy, previewView);
-                                                        Rect boundingBox = ProjectHelper.mapBoundingBox(object.getBoundingBox(), mappingMatrix);
-                                                        rectangleOverlayView.updateRect(boundingBox);
+
+                                                        rectangleOverlayView.updateRect(boundingBox, obstacle.getObstacleName());
+
                                                         rectangleOverlayView.invalidate();
+
                                                     }
                                                 }
                                             }
@@ -223,8 +252,8 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                                             }
                                     );
 
+                            }
                         }
-                    }
                 });
 
         CameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, imageAnalysis, preview);
@@ -265,29 +294,11 @@ public class ObjectDetectionActivity extends AppCompatActivity {
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if(matches != null) {
-                    if(matches.contains("stop detecting")) {
-                        Intent intent = new Intent(ObjectDetectionActivity.this, MainActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-                    }
-                    else if(matches.contains("text to speech")){
-                        speaker.speakText("To continue to a different task, please say 'stop detecting'");
-
-                    } else if(matches.contains("help")) {
-                        speaker.speakText("To continue to a different task, please say 'stop detecting'");
-                    } else if(matches.contains("battery life")) {
-                        speaker.speakText("To continue to a different task, please say 'stop detecting'");
-
-                    } else if(matches.contains("record voice memo")) {
-                        speaker.speakText("To continue to a different task, please say 'stop detecting'");
-
-                    } else if(matches.contains("play record memo")) {
-                        speaker.speakText("To continue to a different task, please say 'stop detecting'");
-                    }
-                    else {
-                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
-                        speaker.setRunning(true);
+                if (matches != null) {
+                    if(matches.contains("play memo")){
+                        speaker.speakText("Leave obstacle detection to play recording.");
+                    } else {
+                        ProjectHelper.handleCommands(matches, ObjectDetectionActivity.this, speaker, context);
                     }
                 }
             }

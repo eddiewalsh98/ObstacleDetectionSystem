@@ -21,16 +21,16 @@ public class Obstacle {
 
     public Obstacle(){ }
 
-    public Obstacle(DetectedObject object){
+    public Obstacle(DetectedObject object, Rect boundingBox, int previewWidth){
         if(object.getLabels().isEmpty()) {
             this.obstacleName = "Unknown Obstacle";
         } else {
-            this.obstacleName = object.getLabels().get(1).getText();
+            this.obstacleName = object.getLabels().get(0).getText();
         }
         this.obstacleID = object.getTrackingId();
         this.obstacleRect = object.getBoundingBox();
         this.obstacleOccurence = 0;
-        this.obstacleLocation = calculateObstacleLocation(obstacleRect, 1080);
+        this.obstacleLocation = calculateObstacleLocation(obstacleRect, previewWidth);
         this.isObstacle = true;
     }
 

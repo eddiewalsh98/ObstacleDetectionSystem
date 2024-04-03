@@ -160,53 +160,7 @@ public class VoiceMemoActivity extends AppCompatActivity {
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if(matches != null) {
-
-                    if(matches.contains("detect objects")) {
-                        Intent intent = new Intent(VoiceMemoActivity.this, ObjectDetectionActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-
-                    } else if(matches.contains("text to speech")){
-
-                        Intent intent = new Intent(VoiceMemoActivity.this, TextToSpeechActivity.class);
-                        speaker.Destroy();
-                        startActivity(intent);
-
-                    } else if(matches.contains("help")) {
-
-                        speaker.speakText("To use the application, you can say 'text to speech' to convert text to speech, " +
-                                "'read' to read text from the camera, 'battery life' to check your battery level, " +
-                                "'record voice memo' to record a 20 second voice memo, 'play record memo' to play the recorded memo, " +
-                                "and 'detect objects' to detect objects in the camera view. Hold down on the screen to speak.");
-
-                    } else if(matches.contains("battery life")) {
-
-                        float batteryLevel = ProjectHelper.getBatteryLevel(context);
-                        speaker.speakText("Your battery level is " + batteryLevel + " percent");
-
-                    } else if(matches.contains("record voice memo")) {
-
-                        startRecordingMemo();
-                        speaker.speakText("Memo recorded successfully");
-
-                    } else if(matches.contains("play record memo")) {
-                        ContextWrapper contextWrapper = new ContextWrapper(getApplicationContext());
-                        File memoDirectory = contextWrapper.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
-                        File file = new File(memoDirectory, "ODSRecordingFile" + ".mp3");
-                        try {
-                            mediaPlayer = new MediaPlayer();
-                            mediaPlayer.setDataSource(file.getPath());
-                            mediaPlayer.prepare();
-                            mediaPlayer.start();
-                        } catch (IOException e) {
-                            Log.d("PlayMemo", e.getMessage());
-                            speaker.speakText("I'm sorry, I couldn't play the memo. Please try again");
-                        }
-
-                    }
-                    else {
-                        speaker.speakText("I'm sorry, I didn't get that. Please try again");
-                    }
+                    ProjectHelper.handleCommands(matches, VoiceMemoActivity.this, speaker, context);
                 }
             }
 
