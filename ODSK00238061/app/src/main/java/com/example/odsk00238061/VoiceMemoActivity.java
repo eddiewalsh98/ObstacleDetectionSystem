@@ -4,16 +4,21 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 
@@ -30,7 +35,6 @@ public class VoiceMemoActivity extends AppCompatActivity {
     private MediaRecorder mediaRecorder;
     private Intent intentRecognizer;
     private SpeechRecognizer speechRecognizer;
-    private MediaPlayer mediaPlayer;
     private Speaker speaker;
     private final Handler handler = new Handler();
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
@@ -44,6 +48,7 @@ public class VoiceMemoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         context = this;
         speaker = new Speaker(this);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_voicememo);
         relativeLayout = findViewById(R.id.layout);
         relativeLayout.setOnTouchListener((v, event) -> {
@@ -62,22 +67,41 @@ public class VoiceMemoActivity extends AppCompatActivity {
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                speaker.speakText("The voice recording will began after the beep. Hold the screen to stop recording");
+                BeginVoiceMemo();
+            }
+        });
+
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        BeginVoiceMemo();
-    }
+//    @Override
+//    protected void onStart() {
+//        super.onStart();
+//        BeginVoiceMemo();
+//    }
 
     public void BeginVoiceMemo() {
-        startRecordingMemo();
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Start recording voice memo after the delay
+                startRecordingMemo();
+            }
+        }, 6000);
     }
 
     public void startRecordingMemo() {
-        speaker.speakText("Memo recording starting now");
+
+        playBeep();
+
         ContextWrapper contextWrapper = new ContextWrapper(getApplicationContext());
+
         File memoDirectory = contextWrapper.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+
         File file = new File(memoDirectory, "ODSRecordingFile" + ".mp3");
 
         try {
@@ -177,4 +201,24 @@ public class VoiceMemoActivity extends AppCompatActivity {
         speechRecognizer.startListening(intentRecognizer);
     }
 
+    private void playBeep() {
+        // Initialize ToneGenerator with the beep tone type and volume
+        ToneGenerator toneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); // Adjust volume as needed
+
+        // Play the beep sound for a short duration
+        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP);
+
+        // Delay for a short period to allow the beep sound to play before recording starts
+        try {
+            Thread.sleep(1000); // Adjust the delay duration as needed
+
+        } catch (InterruptedException e) {
+
+            e.printStackTrace();
+
+        }
+
+        // Release resources
+        toneGenerator.release();
+    }
 }

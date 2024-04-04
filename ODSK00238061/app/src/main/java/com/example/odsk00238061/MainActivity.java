@@ -43,6 +43,7 @@ import android.util.Rational;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity  {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         vibrate(this, 1000);
-
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         relativeLayout = findViewById(R.id.layout);
         context = this;
 

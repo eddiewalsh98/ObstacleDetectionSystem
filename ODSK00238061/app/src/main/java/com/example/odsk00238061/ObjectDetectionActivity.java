@@ -17,6 +17,7 @@ import android.util.Log;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
@@ -82,7 +83,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 @Override
                 public void onActivityResult(Boolean isGranted) {
                     if (isGranted) {
-                        // Camera permission is granted, proceed with setting up camera
                         cameraProviderFuture.addListener(() -> {
                             try {
                                 cameraProvider = cameraProviderFuture.get();
@@ -105,12 +105,13 @@ public class ObjectDetectionActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_object_detection);
         previewView = findViewById(R.id.cameraPreview);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         context = this;
         rectangleOverlayView = findViewById(R.id.rectangle_overlay);
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
         intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                                  RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         speaker = new Speaker(this, previewView);
         speakerThread = new Thread(speaker);
@@ -152,14 +153,13 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 cameraProvider = cameraProviderFuture.get();
                 if(ContextCompat.checkSelfPermission(ObjectDetectionActivity.this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
                     activityResultLauncher.launch(Manifest.permission.CAMERA);
-                } else{
+                } else {
                     BindPreview(cameraProvider);
                 }
             } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace(); // Handle exceptions as needed
                 Log.e("CamerX Camera Provider", e.getMessage());
             }
-        }, ContextCompat.getMainExecutor(this));
+            }, ContextCompat.getMainExecutor(this));
         TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {

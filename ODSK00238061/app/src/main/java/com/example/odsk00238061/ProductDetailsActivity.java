@@ -12,6 +12,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -54,6 +55,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_product_details);
         Intent intent = getIntent();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         String upc = intent.getStringExtra("barcode");
         context = this;
         productNameTextView = findViewById(R.id.productNameTextView);
@@ -90,7 +92,12 @@ public class ProductDetailsActivity extends AppCompatActivity {
                 @Override
                 public void onInit(int status) {
                     if (status == TextToSpeech.SUCCESS) {
-                        speaker.speakText("The product name is " + productName);
+                        if(productDescription != null){
+                            speaker.speakText("The product name is " + productName + ". Would you like to hear the description?");
+                        } else{
+                            speaker.speakText("The product name is " + productName + ". Unfortunately, there is no description available for this product.");
+
+                        }
                     }
                 }
             });
@@ -101,7 +108,10 @@ public class ProductDetailsActivity extends AppCompatActivity {
 
     public void getProductDetails(String upc) {
         RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "https://api.barcodelookup.com/v3/products?barcode=" + upc + "&formatted=y&key=cy0xfgm8a8y6u0ytpb50snsf17o21c";
+        String url = getResources().getString(R.string.BASE_URL) + upc
+                    + "&formatted=y&key="
+                    + getResources().getString(R.string.API_KEY);
+
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -184,10 +194,14 @@ public class ProductDetailsActivity extends AppCompatActivity {
             @Override
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if(matches == null){
-                    speaker.speakText("I'm sorry, I didn't quite catch that. Please try again.");
-                } else{
-//                    if(matches.contains(""))
+                if(matches != null) {
+                    if(matches.contains("yes") && productDescription != null){
+                        speaker.speakText(productDescription);
+                    } else if(matches.contains("yes") && productDescription == null){
+                        speaker.speakText("Unfortunately, there is no description available for this product.");
+                    } else {
+                        ProjectHelper.handleCommands(matches, ProductDetailsActivity.this , speaker, context);
+                    }
                 }
             }
 

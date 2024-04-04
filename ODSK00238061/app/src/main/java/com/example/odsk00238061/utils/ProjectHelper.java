@@ -156,6 +156,8 @@ public class ProjectHelper {
 
             speaker.speakText(getHelpMessage());
 
+        } else {
+            speaker.speakText("I'm sorry, I didn't understand that. Please try again");
         }
     }
 
