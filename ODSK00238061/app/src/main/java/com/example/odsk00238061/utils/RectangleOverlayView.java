@@ -67,6 +67,8 @@ public class RectangleOverlayView extends View {
             float y = top + (bottom - top) / 2;
             canvas.drawText(text, x, y, textPaint);
         }
+
+        //canvas.restore();
     }
 
     private void changeRectangleColor() {
@@ -81,3 +83,4 @@ public class RectangleOverlayView extends View {
         paint.setColor(newColor);
     }
 }
+

@@ -67,7 +67,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     private Speaker speaker;
     private Thread speakerThread;
     private RectangleOverlayView rectangleOverlayView;
-    private PreviewView previewView;
+     private PreviewView previewView;
     int camFacing = CameraSelector.LENS_FACING_BACK;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ObjectDetector objectDetector;
@@ -108,7 +108,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         context = this;
         rectangleOverlayView = findViewById(R.id.rectangle_overlay);
-        ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+        //ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
         intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                                   RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -126,7 +126,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 new CustomObjectDetectorOptions.Builder(localModel)
                         .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
                         .enableClassification()
-                        .setClassificationConfidenceThreshold(0.6f)
+                        .setClassificationConfidenceThreshold(0.8f)
                         .setMaxPerObjectLabelCount(1)
                         .build();
 
@@ -178,19 +178,16 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 .setTargetResolution(targetResolution)
                 .build();
 
-
-        cameraSelector = new CameraSelector.Builder()
-                                           .requireLensFacing(camFacing)
-                                           .build();
-
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
+        cameraSelector = new CameraSelector.Builder()
+                    .requireLensFacing(camFacing)
+                    .build();
 
         imageAnalysis = new ImageAnalysis.Builder()
-                //.setTargetResolution(targetResolution)
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build();
-
+                    .setTargetResolution(targetResolution)
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build();
 
         PositionTranslator positionTranslator = new PositionTranslator(224, 224,
                                                                         previewView.getWidth(),
@@ -202,7 +199,8 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 {
                     @ExperimentalGetImage
                     @Override
-                    public void analyze(@NonNull ImageProxy imageProxy) {
+                    public void analyze(@NonNull ImageProxy imageProxy)
+                    {
                         Image image = imageProxy.getImage();
                         Log.d("ImageProxy", imageProxy.getWidth() + "x" + imageProxy.getHeight());
                         if (image != null) {
@@ -214,7 +212,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                             InputImage inputImage = InputImage.fromBitmap(bitmap, imageProxy.getImageInfo().getRotationDegrees());
 
                             Task<List<DetectedObject>> task = objectDetector.process(inputImage);
-
                             task.addOnSuccessListener(
                                             new OnSuccessListener<List<DetectedObject>>() {
                                                 @Override
@@ -260,7 +257,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     }
 
     private void startSpeechRecognition() {
-        // Start listening for speech continuously
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
             @Override
             public void onReadyForSpeech(Bundle params) {
@@ -339,13 +335,4 @@ public class ObjectDetectionActivity extends AppCompatActivity {
             longTouchRunnable = null;
         }
     }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        speaker.setRunning(false);
-        stopSpeechRecognition();
-        objectDetector.close();
-    }
-
 }

@@ -138,9 +138,10 @@ public class ProjectHelper {
             speaker.Destroy();
             activity.startActivity(intent);
 
-        } else if(matches.contains("settings")) {
+        } else if(matches.contains("battery")) {
 
-            speaker.speakText("settings are currently under construction");
+            float batteryLevel = getBatteryLevel(context);
+            speaker.speakText("The current battery life is " + batteryLevel + " percent");
 
         } else if(matches.contains("record memo")) {
 
@@ -178,7 +179,67 @@ public class ProjectHelper {
 
     private static String getHelpMessage() {
         return "You can say the following commands: \n" +
-                "Text to speech, Detect obstacles, Scan barcode, Settings, Record memo, Play memo";
+                "Text to speech, Detect obstacles, Scan barcode, Battery, Record memo, Play memo";
+    }
+
+
+    public static void initProductDetailsCommandHandler(Speaker speaker, Context context, Product product){
+        if(!product.isTitleAvailable() && !product.isDescriptionAvailable()){
+            speaker.speakText("I'm sorry, I couldn't find any information about this product.");
+            return;
+        }
+
+        if(product.isFood()){
+            if(product.isIngredientsAvailable() && product.isNutritionFactsAvailable()) {
+                speaker.speakText("The product name is " + product.getTitle() + ". " +
+                                  "To get the ingredients, say 'ingredients'. " +
+                                  "To get the nutrition facts, say 'nutrition'.");
+            } else {
+                speaker.speakText("The product name is " + product.getTitle() + ". " +
+                                  "Some of the product details may not be available.");
+            }
+
+        } else {
+            if(product.isDescriptionAvailable()){
+                speaker.speakText("The product name is " + product.getTitle() + ". " +
+                                  "To get the description, say 'description'.");
+            } else {
+                speaker.speakText("The product name is " + product.getTitle() + ".");
+            }
+        }
+    }
+
+    public static void ProductDetailsCommandHandler(ArrayList<String> matches, Activity activity, Speaker speaker, Context context, Product product) {
+        if(matches.contains("ingredients")){
+            if(product.isIngredientsAvailable()){
+                speaker.speakText("The ingredients include " + product.getIngredients());
+            } else {
+                speaker.speakText("Unfortunately, there are no ingredients available for this product.");
+            }
+        } else if(matches.contains("nutrition")){
+            if(product.isNutritionFactsAvailable()){
+                speaker.speakText("The nutrition facts include " + product.getNutritionFacts());
+            } else {
+                speaker.speakText("Unfortunately, there are no nutrition facts available for this product.");
+            }
+        } else if(matches.contains("description")){
+            if(product.isDescriptionAvailable()){
+                speaker.speakText(product.getDescription());
+            } else {
+                speaker.speakText("Unfortunately, there is no description available for this product.");
+            }
+        } else if(matches.contains("product name")) {
+            if(product.isTitleAvailable()){
+                speaker.speakText("The product name is " + product.getTitle());
+            } else {
+                speaker.speakText("Unfortunately, there is no product name available for this product.");
+            }
+        } else if(matches.contains("repeat")){
+            initProductDetailsCommandHandler(speaker, context, product);
+
+        } else {
+            handleCommands(matches, activity, speaker, context);
+        }
     }
 
 }

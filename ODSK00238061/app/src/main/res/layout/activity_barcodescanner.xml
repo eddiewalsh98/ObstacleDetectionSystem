@@ -10,6 +10,21 @@
     <androidx.camera.view.PreviewView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/cameraPreview" />
+        android:id="@+id/barcodePreview" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:paddingBottom="16dp">
+        <ImageView
+            android:id="@+id/icon_circle"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/barcode_logo"
+            android:background="@android:color/transparent"
+            android:layout_gravity="center_horizontal|bottom" />
+    </FrameLayout>
 
 </RelativeLayout>

@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.text.TextUtils;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -25,27 +27,33 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.odsk00238061.utils.Product;
 import com.example.odsk00238061.utils.ProjectHelper;
 import com.example.odsk00238061.utils.Speaker;
+import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class ProductDetailsActivity extends AppCompatActivity {
 
     private Context context;
     private SpeechRecognizer speechRecognizer;
+    private Intent intentRecognizer;
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
     private Handler handler = new Handler();
     private boolean hasExecuted = false;
+    private Product product;
     private Runnable longTouchRunnable;
     private String productName = "";
     private String productDescription = "";
     private TextView productNameTextView;
     private TextView productDescriptionTextView;
+    private ImageView productImageView;
     private Speaker speaker;
     private RelativeLayout relativeLayout;
 
@@ -54,14 +62,27 @@ public class ProductDetailsActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_product_details);
+        relativeLayout = findViewById(R.id.layout);
+
         Intent intent = getIntent();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         String upc = intent.getStringExtra("barcode");
+        product = new Product();
+
         context = this;
+
         productNameTextView = findViewById(R.id.productNameTextView);
         productDescriptionTextView = findViewById(R.id.productDescriptionTextView);
+        productImageView = findViewById(R.id.productImageView);
+
+        intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+
         getProductDetails(upc);
-        relativeLayout = findViewById(R.id.layout);
+
         speaker = new Speaker(this);
         relativeLayout.setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -92,16 +113,10 @@ public class ProductDetailsActivity extends AppCompatActivity {
                 @Override
                 public void onInit(int status) {
                     if (status == TextToSpeech.SUCCESS) {
-                        if(productDescription != null){
-                            speaker.speakText("The product name is " + productName + ". Would you like to hear the description?");
-                        } else{
-                            speaker.speakText("The product name is " + productName + ". Unfortunately, there is no description available for this product.");
-
-                        }
+                        ProjectHelper.initProductDetailsCommandHandler(speaker, context, product);
                     }
                 }
             });
-
             hasExecuted = true;
         }
     }
@@ -118,13 +133,51 @@ public class ProductDetailsActivity extends AppCompatActivity {
                     public void onResponse(String response) {
                         try {
                             JSONObject jsonResponse = new JSONObject(response);
+
                             JSONArray products = jsonResponse.getJSONArray("products");
+
                             if (products.length() > 0) {
-                                JSONObject product = products.getJSONObject(0);
-                                productName = product.optString("title");
-                                productDescription = product.optString("ingredients");
-                                productNameTextView.setText(productName);
-                                productDescriptionTextView.setText(productDescription);
+
+                                JSONObject productJ = products.getJSONObject(0);
+
+                                String prodTitle = productJ.optString("title");
+                                String prodCategory = productJ.optString("category");
+                                String prodDescription = productJ.optString("description");
+                                String prodIngredients = productJ.optString("ingredients");
+
+                                if(prodTitle.trim().toLowerCase().equals(prodDescription
+                                                   .trim().toLowerCase())){
+                                    prodDescription = "";
+                                }
+
+                                product.setTitle(prodTitle);
+                                product.setCategory(prodCategory);
+                                product.setIngredients(prodIngredients);
+
+
+                                JSONArray imagesArray = productJ.getJSONArray("images");
+                                List<String> imagesList = new ArrayList<>();
+                                for (int i = 0; i < imagesArray.length(); i++) {
+                                    imagesList.add(imagesArray.getString(i));
+                                }
+
+                                product.setImages(imagesList);
+
+                                if(!(product.getImages().isEmpty())){
+                                    Picasso.get().load(product.getImages().get(0))
+                                            .into(productImageView);
+                                } else {
+                                    productImageView.setImageResource(R.drawable.placeholder_image);
+                                }
+
+                                productNameTextView.setText(product.getTitle());
+
+                                if(product.isDescriptionAvailable()) {
+                                    productDescriptionTextView.setText(product.getDescription());
+                                } else {
+                                    productDescriptionTextView.setText("No description available");
+                                }
+
                             }
                         } catch (JSONException e) {
                             Log.d("ProductDetailsActivity", "Error: " + e.getMessage());
@@ -195,13 +248,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if(matches != null) {
-                    if(matches.contains("yes") && productDescription != null){
-                        speaker.speakText(productDescription);
-                    } else if(matches.contains("yes") && productDescription == null){
-                        speaker.speakText("Unfortunately, there is no description available for this product.");
-                    } else {
-                        ProjectHelper.handleCommands(matches, ProductDetailsActivity.this , speaker, context);
-                    }
+                    ProjectHelper.ProductDetailsCommandHandler(matches, ProductDetailsActivity.this, speaker, context, product);
                 }
             }
 
@@ -215,7 +262,6 @@ public class ProductDetailsActivity extends AppCompatActivity {
 
             }
         });
+        speechRecognizer.startListening(intentRecognizer);
     }
-
-
 }

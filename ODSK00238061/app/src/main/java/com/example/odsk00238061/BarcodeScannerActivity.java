@@ -30,6 +30,7 @@ import androidx.camera.core.ExperimentalGetImage;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
+import androidx.camera.core.UseCase;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
@@ -59,6 +60,8 @@ public class BarcodeScannerActivity extends AppCompatActivity {
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
     private Handler handler = new Handler();
     private Runnable longTouchRunnable;
+    private CameraSelector cameraSelector;
+    private ImageAnalysis imageAnalysis;
     private Speaker speaker;
     private int camFacing = CameraSelector.LENS_FACING_BACK;
     private PreviewView previewView;
@@ -99,14 +102,18 @@ public class BarcodeScannerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_barcodescanner);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         vibrate(this, 1000);
-        previewView = findViewById(R.id.cameraPreview);
+        previewView = findViewById(R.id.barcodePreview);
         context = this;
+
         speaker = new Speaker(this);
+
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PackageManager.PERMISSION_GRANTED);
+
         intentRecognizer = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intentRecognizer.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         BarcodeScannerOptions options =
                 new BarcodeScannerOptions.Builder()
@@ -158,9 +165,9 @@ public class BarcodeScannerActivity extends AppCompatActivity {
 
     private void setupCameraAndBindPreview(ProcessCameraProvider cameraProvider, Context context) {
         Preview preview = new Preview.Builder().build();
-        CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(camFacing).build();
+        cameraSelector = new CameraSelector.Builder().requireLensFacing(camFacing).build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
-        ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
+        imageAnalysis = new ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build();
 
@@ -204,6 +211,7 @@ public class BarcodeScannerActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<List<Barcode>> task) {
                         imageProxy.close();
+                        Log.d("BarcodeScanner", "Still running");
                     }
                 });
         }
@@ -265,8 +273,48 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null) {
-                     ProjectHelper.handleCommands(matches, BarcodeScannerActivity.this,
-                                                  speaker, context);
+                     //ProjectHelper.handleCommands(matches, BarcodeScannerActivity.this,
+                       //                           speaker, context);
+
+                    if(matches.contains("text to speech")){
+
+//                        Intent intent = new Intent(BarcodeScannerActivity.this, TextToSpeechActivity.class);
+//                        speaker.Destroy();
+//                        BarcodeScannerActivity.startActivity(intent);
+
+                    } else if(matches.contains("detect obstacles")){
+
+                        Intent intent = new Intent(BarcodeScannerActivity.this, ObjectDetectionActivity.class);
+                        speaker.Destroy();
+                        startActivity(intent);
+
+                    } else if(matches.contains("scan barcode")){
+
+//                        Intent intent = new Intent(activity, BarcodeScannerActivity.class);
+//                        speaker.Destroy();
+//                        activity.startActivity(intent);
+
+                    } else if(matches.contains("settings")) {
+
+                        speaker.speakText("settings are currently under construction");
+
+                    } else if(matches.contains("record memo")) {
+
+//                        Intent intent = new Intent(activity, VoiceMemoActivity.class);
+//                        speaker.Destroy();
+//                        activity.startActivity(intent);
+
+                    } else if(matches.contains("play memo")){
+
+                        //PlayLatestMemo(context, speaker);
+
+                    } else if(matches.contains("help")) {
+
+//                        speaker.speakText(getHelpMessage());
+
+                    } else {
+                        speaker.speakText("I'm sorry, I didn't understand that. Please try again");
+                    }
                 }
             }
 
@@ -282,4 +330,38 @@ public class BarcodeScannerActivity extends AppCompatActivity {
         });
         speechRecognizer.startListening(intentRecognizer);
     }
+
+//    @Override
+//    protected void onStop() {
+//        super.onStop();
+//        if (speaker != null) {
+//            speaker.Destroy();
+//        }
+//        if (cameraProvider != null) {
+//            cameraProvider.unbindAll();
+//        }
+//        if (barcodeScanner != null) {
+//            barcodeScanner.close();
+//        }
+//        if(imageAnalysis != null){
+//            imageAnalysis.clearAnalyzer();
+//        }
+//    }
+//
+//    @Override
+//    protected void onDestroy() {
+//        super.onDestroy();
+//        if (speaker != null) {
+//            speaker.Destroy();
+//        }
+//        if (cameraProvider != null) {
+//            cameraProvider.unbindAll();
+//        }
+//        if (barcodeScanner != null) {
+//            barcodeScanner.close();
+//        }
+//        if(imageAnalysis != null){
+//            imageAnalysis.clearAnalyzer();
+//        }
+//    }
 }
