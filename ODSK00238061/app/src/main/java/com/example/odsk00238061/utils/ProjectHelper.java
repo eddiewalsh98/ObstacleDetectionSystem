@@ -120,19 +120,20 @@ public class ProjectHelper {
     }
 
     public static void handleCommands(ArrayList<String> matches, Activity activity, Speaker speaker, Context context){
-        if(matches.contains("text to speech")){
+        if(matches.contains("text-to-speech") || matches.contains("text to speech")
+                || matches.contains("speech") || matches.contains("text")){
 
             Intent intent = new Intent(activity, TextToSpeechActivity.class);
             speaker.Destroy();
             activity.startActivity(intent);
 
-        } else if(matches.contains("detect obstacles")){
+        } else if(matches.contains("detect obstacles") || matches.contains("obstacles") || matches.contains("detect")) {
 
             Intent intent = new Intent(activity, ObjectDetectionActivity.class);
             speaker.Destroy();
             activity.startActivity(intent);
 
-        } else if(matches.contains("scan barcode")){
+        } else if(matches.contains("scan barcode") || matches.contains("barcode") || matches.contains("scan")) {
 
             Intent intent = new Intent(activity, BarcodeScannerActivity.class);
             speaker.Destroy();
@@ -143,13 +144,13 @@ public class ProjectHelper {
             float batteryLevel = getBatteryLevel(context);
             speaker.speakText("The current battery life is " + batteryLevel + " percent");
 
-        } else if(matches.contains("record memo")) {
+        } else if(matches.contains("record memo") || matches.contains("record")) {
 
             Intent intent = new Intent(activity, VoiceMemoActivity.class);
             speaker.Destroy();
             activity.startActivity(intent);
 
-        } else if(matches.contains("play memo")){
+        } else if(matches.contains("play memo") || matches.contains("play")) {
 
             PlayLatestMemo(context, speaker);
 
@@ -240,6 +241,14 @@ public class ProjectHelper {
         } else {
             handleCommands(matches, activity, speaker, context);
         }
+    }
+
+
+    public static InputImage imageProxyToInputImage(ImageProxy imageProxy, int imageSize) {
+        Bitmap bitmap = imageProxy.toBitmap();
+        bitmap = ProjectHelper.resizeBitmap(bitmap, imageSize);
+
+        return InputImage.fromBitmap(bitmap, imageProxy.getImageInfo().getRotationDegrees());
     }
 
 }

@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.Image;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -62,6 +63,7 @@ public class TextToSpeechActivity extends AppCompatActivity  {
     private SpeechRecognizer speechRecognizer;
     private TextRecognizer textRecognizer;
     private static final int TOUCH_DURATION_THRESHOLD = 3000;
+    private String extractedText = "";
     private Handler handler = new Handler();
     private Runnable longTouchRunnable;
     private PreviewView previewView;
@@ -175,8 +177,7 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                     .addOnSuccessListener(new OnSuccessListener<Text>() {
                         @Override
                         public void onSuccess(Text visionText) {
-                            String text = visionText.getText();
-                            speaker.speakText(text);
+                            extractedText = visionText.getText();
                         }
                     })
                     .addOnFailureListener(new OnFailureListener() {
@@ -190,9 +191,15 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                         @Override
                         public void onComplete(@NonNull Task<Text> task) {
                             imageProxy.close();
+                            if(extractedText.isEmpty()){
+                                speaker.speakText("No text detected, please try again.");
+                            } else {
+                                speaker.speakText(extractedText);
+                            }
                             readText = false;
                         }
                     });
+
         } else{
             imageProxy.close();
         }

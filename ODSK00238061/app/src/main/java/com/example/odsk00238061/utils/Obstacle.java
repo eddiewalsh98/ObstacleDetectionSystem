@@ -3,7 +3,11 @@ package com.example.odsk00238061.utils;
 import android.graphics.Rect;
 import android.view.View;
 
+import androidx.camera.view.PreviewView;
+
 import com.google.mlkit.vision.objects.DetectedObject;
+
+import java.util.List;
 
 public class Obstacle {
 
@@ -19,13 +23,15 @@ public class Obstacle {
 
     private Boolean isObstacle;
 
+    private PreviewView previewView;
+
     public Obstacle(){ }
 
     public Obstacle(DetectedObject object, Rect boundingBox, int previewWidth){
         if(object.getLabels().isEmpty()) {
             this.obstacleName = "Unknown Obstacle";
         } else {
-            this.obstacleName = object.getLabels().get(0).getText();
+            this.obstacleName = getLabelWithHighestConfidence(object.getLabels());
         }
         this.obstacleID = object.getTrackingId();
         this.obstacleRect = object.getBoundingBox();
@@ -90,6 +96,21 @@ public class Obstacle {
         this.isObstacle = isObstacle;
     }
 
+    public void setPreviewView(PreviewView view) { this.previewView = view; }
+
+    public String getLabelWithHighestConfidence(List<DetectedObject.Label> labels) {
+        String maxLabel = "";
+        float maxConfidence = Float.MIN_VALUE; // Initialize to the smallest possible value
+        for (DetectedObject.Label label : labels) {
+            float confidence = label.getConfidence();
+            if (confidence > maxConfidence) {
+                maxConfidence = confidence;
+                maxLabel = label.getText();
+            }
+        }
+        return maxLabel;
+    }
+
     private String calculateObstacleLocation(Rect rect, int pWidth) {
         int previewWidth = pWidth;
         int rectCenterX = rect.centerX();
@@ -121,9 +142,6 @@ public class Obstacle {
             if (rectCenterX < previewWidth * 7 / 8) {
                 return "Far Right";
             } else {
-                // Handle the case when the rect is exactly at the right edge
-                // Or beyond the right edge of the preview view
-                // This might depend on your specific requirements
                 return "Right Ahead";
             }
         }

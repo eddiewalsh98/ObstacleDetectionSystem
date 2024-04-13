@@ -9,7 +9,7 @@
         android:id="@+id/center_icon"
         android:layout_width="200dp"
         android:layout_height="200dp"
-        android:src="@drawable/mic_logo"
+        android:src="@drawable/microphone"
         android:layout_centerInParent="true"
         android:background="@android:color/transparent" />
 

@@ -77,6 +77,8 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     private ImageAnalysis imageAnalysis;
     private CameraSelector cameraSelector;
 
+    private int INPUT_IMAGE_SIZE = 224;
+
     private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
             new ActivityResultCallback<Boolean>() {
@@ -126,8 +128,8 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 new CustomObjectDetectorOptions.Builder(localModel)
                         .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
                         .enableClassification()
-                        .setClassificationConfidenceThreshold(0.8f)
-                        .setMaxPerObjectLabelCount(1)
+                        .setClassificationConfidenceThreshold(0.6f)
+                        .setMaxPerObjectLabelCount(3)
                         .build();
 
         objectDetector = ObjectDetection.getClient(customObjectDetectorOptions);
@@ -171,11 +173,8 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     }
 
     private void BindPreview(ProcessCameraProvider CameraProvider) {
-
-        Size targetResolution = new Size(360,800 );
-
         preview = new Preview.Builder()
-                .setTargetResolution(targetResolution)
+                .setTargetResolution(new Size(360,800 ))
                 .build();
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
@@ -185,7 +184,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                     .build();
 
         imageAnalysis = new ImageAnalysis.Builder()
-                    .setTargetResolution(targetResolution)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build();
 
@@ -205,11 +203,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                         Log.d("ImageProxy", imageProxy.getWidth() + "x" + imageProxy.getHeight());
                         if (image != null) {
 
-                            Bitmap bitmap = imageProxy.toBitmap();
-
-                            bitmap = ProjectHelper.resizeBitmap(bitmap, 224);
-
-                            InputImage inputImage = InputImage.fromBitmap(bitmap, imageProxy.getImageInfo().getRotationDegrees());
+                            InputImage inputImage = ProjectHelper.imageProxyToInputImage(imageProxy, INPUT_IMAGE_SIZE);
 
                             Task<List<DetectedObject>> task = objectDetector.process(inputImage);
                             task.addOnSuccessListener(
