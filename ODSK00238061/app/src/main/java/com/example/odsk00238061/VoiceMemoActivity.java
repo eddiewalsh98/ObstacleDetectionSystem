@@ -69,11 +69,6 @@ public class VoiceMemoActivity extends AppCompatActivity {
     private Runnable longTouchRunnable;
 
     /**
-     * Layout that contains UI elements.
-     */
-    private RelativeLayout relativeLayout;
-
-    /**
      * Context of the application.
      */
     private Context context;
@@ -94,7 +89,7 @@ public class VoiceMemoActivity extends AppCompatActivity {
         // Set the activity layout
         setContentView(R.layout.activity_voicememo);
         // Get the RelativeLayout containing UI elements
-        relativeLayout = findViewById(R.id.layout);
+        RelativeLayout relativeLayout = findViewById(R.id.layout);
         // Set a touch listener to start/stop recording on long touch
         relativeLayout.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
@@ -296,9 +291,9 @@ public class VoiceMemoActivity extends AppCompatActivity {
      */
     private void playBeep() {
         // Initialize ToneGenerator with the beep tone type and volume
-        ToneGenerator toneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); // Adjust volume as needed
+        ToneGenerator toneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         // Play the beep sound for a short duration
-        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP);
+        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
         // Delay for a short period to allow the beep sound to play before recording starts
         try {
             Thread.sleep(1000); // Adjust the delay duration as needed
@@ -309,4 +304,5 @@ public class VoiceMemoActivity extends AppCompatActivity {
         // Release resources
         toneGenerator.release();
     }
+
 }
