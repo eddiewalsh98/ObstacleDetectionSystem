@@ -136,5 +136,20 @@ public class RectangleOverlayView extends View {
         // Set the new color for the bounding rectangle
         paint.setColor(newColor);
     }
+
+    /**
+     * Clears the bounding rectangle and text from the overlay.
+     */
+    public void clearRect() {
+        // Update the coordinates of the bounding rectangle and the text to clear them
+        this.left = 0;
+        this.top = 0;
+        this.right = 0;
+        this.bottom = 0;
+        this.text = "";
+
+        // Trigger a redraw of the overlay
+        invalidate();
+    }
 }
 

@@ -37,6 +37,22 @@ public class Obstacle {
         this.obstacleOccurrence = 0;
     }
 
+    /**
+     *  Constructor for the Obstacle class (testing purposes)
+     * @param obstacleName  Detected object name
+     * @param location Bounding Box for the obstacle
+     */
+    public Obstacle(String obstacleName, Rect location){
+        if(!obstacleName.isEmpty()){
+            this.obstacleName = obstacleName;
+        } else {
+            this.obstacleName = "Unknown Obstacle";
+        }
+
+        this.obstacleRect = location;
+        this.obstacleOccurrence = 0;
+    }
+
     // Getters and Setters
     public String getObstacleName(){
         return obstacleName;

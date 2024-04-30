@@ -21,7 +21,7 @@ public class Speaker implements Runnable,TextToSpeech.OnInitListener {
     private static final long MIN_SPEECH_DELAY = 4000;
 
     // TextToSpeech instance for converting text to speech
-    private TextToSpeech textToSpeech;
+    public TextToSpeech textToSpeech;
 
     // PreviewView used for displaying camera preview
     private PreviewView view;
@@ -30,7 +30,7 @@ public class Speaker implements Runnable,TextToSpeech.OnInitListener {
     private final Context context;
 
     // Represents a potential obstacle detected by the system
-    private Obstacle potentialObstacle;
+    public Obstacle potentialObstacle;
 
     /**
      * Constructor for the Speaker class.
@@ -61,6 +61,10 @@ public class Speaker implements Runnable,TextToSpeech.OnInitListener {
 
         // Initialize the view variable with the provided previewView
         this.view = previewView;
+
+        // Initialize the textToSpeech variable with a new TextToSpeech instance
+        // Also, register this class (which implements TextToSpeech.OnInitListener) as the listener
+        this.textToSpeech = new TextToSpeech(context, this);
 
         // Initialize the potentialObstacle variable with a new instance of the Obstacle class
         this.potentialObstacle = new Obstacle();
@@ -213,6 +217,8 @@ public class Speaker implements Runnable,TextToSpeech.OnInitListener {
             textToSpeech.stop();
             // Shutdown the TextToSpeech engine to release resources
             textToSpeech.shutdown();
+            // Setting the TextToSpeech engine to null
+            textToSpeech = null;
         }
     }
 }

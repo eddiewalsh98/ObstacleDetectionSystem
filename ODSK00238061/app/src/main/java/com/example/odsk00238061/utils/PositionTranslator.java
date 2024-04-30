@@ -14,7 +14,7 @@ public class PositionTranslator {
     private final int targetViewHeight; // Height of the target view
     private final int phoneRotation; // Rotation angle of the phone
 
-    /**
+     /**
      * Constructor for the PositionTranslator class.
      *
      * @param sourceImageWidth  Width of the source image.

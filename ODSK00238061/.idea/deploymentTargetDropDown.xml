@@ -2,6 +2,15 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
+      <entry key="SetUpBarcodeScannerTest()">
+        <State />
+      </entry>
+      <entry key="SetUpTextRecognizerTest()">
+        <State />
+      </entry>
+      <entry key="SpeakerTests">
+        <State />
+      </entry>
       <entry key="app">
         <State>
           <runningDeviceTargetSelectedWithDropDown>
@@ -15,8 +24,11 @@
               </deviceKey>
             </Target>
           </runningDeviceTargetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2024-04-16T17:01:49.625513700Z" />
+          <timeTargetWasSelectedWithDropDown value="2024-04-30T11:02:58.455918200Z" />
         </State>
+      </entry>
+      <entry key="testProcessDetectedObject()">
+        <State />
       </entry>
     </value>
   </component>

@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
@@ -253,11 +254,12 @@ public class TextToSpeechActivity extends AppCompatActivity  {
                         // Get the rotation degrees of the captured image
                         int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
                         // Get the captured image
-                        Image image = imageProxy.getImage();
+                        Bitmap image = imageProxy.toBitmap();
 
                         if (image != null) {
+                            Bitmap convertedImage = ProjectHelper.binarizeImage(image);
                             // Create an InputImage from the captured image with rotation information
-                            InputImage inputImage = InputImage.fromMediaImage(image, rotationDegrees);
+                            InputImage inputImage = InputImage.fromBitmap(image, rotationDegrees);
                             // Perform text detection from the image
                             detectTextFromImage(inputImage, imageProxy);
                         }

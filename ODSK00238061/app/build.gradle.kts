@@ -1,5 +1,6 @@
 import java.util.Properties
 
+
 plugins {
     id("com.android.application")
 }
@@ -11,6 +12,8 @@ android {
     aaptOptions {
         noCompress("tflite")
     }
+
+
     defaultConfig {
         applicationId = "com.example.odsk00238061"
         minSdk = 24

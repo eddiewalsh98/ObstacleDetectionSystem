@@ -7,6 +7,11 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.media.MediaPlayer;
 import android.os.BatteryManager;
@@ -36,7 +41,7 @@ public class ProjectHelper {
      * @param pWidth The width of the preview frame.
      * @return The location of the obstacle relative to the camera frame.
      */
-    public static String calculateObstacleLocation(Rect rect, int pWidth){
+    public static String calculateObstacleLocation(Rect rect, int pWidth) {
         // Calculate the center X-coordinate of the bounding rectangle
         int rectCenterX = rect.centerX();
 
@@ -46,31 +51,23 @@ public class ProjectHelper {
 
         // Determine the location of the obstacle based on its center X-coordinate
         if (rectCenterX < leftThreshold) {
-            if (rectCenterX < pWidth / 8) {
-                return "Far Left";
-            } else {
-                return "Left Ahead";
-            }
+            return "Far Left";
         } else if (rectCenterX < pWidth / 2) {
-            if (rectCenterX < pWidth * 3 / 8) {
+            // Additional condition to ensure it's not too far right to be Center Left
+            if (rectCenterX + (rect.width() / 2) < pWidth / 2) {
                 return "Center Left";
             } else {
-                return "Center Ahead";
+                return "Center";
             }
-        } else if (rectCenterX == pWidth / 2) {
-            return "Center";
         } else if (rectCenterX < rightThreshold) {
-            if (rectCenterX < pWidth * 5 / 8) {
+            // Additional condition to ensure it's not too far left to be Center Right
+            if (rectCenterX - (rect.width() / 2) > pWidth / 2) {
                 return "Center Right";
             } else {
-                return "Right Ahead";
+                return "Center";
             }
         } else {
-            if (rectCenterX < pWidth * 7 / 8) {
-                return "Far Right";
-            } else {
-                return "Right Ahead";
-            }
+            return "Far Right";
         }
     }
 
@@ -377,5 +374,74 @@ public class ProjectHelper {
 
         // Create an InputImage from the resized Bitmap and rotation information
         return InputImage.fromBitmap(bitmap, imageProxy.getImageInfo().getRotationDegrees());
+    }
+
+    /**
+     * Converts the input image to a binary image using a specified threshold.
+     *
+     * @param originalImage The original image to be binarized.
+     * @return A binary version of the original image.
+     */
+    public static Bitmap binarizeImage(Bitmap originalImage) {
+        // Convert the image to grayscale
+        Bitmap grayscaleImage = toGrayscale(originalImage);
+
+        // Create a new bitmap to store the binary image
+        Bitmap binaryImage = Bitmap.createBitmap(grayscaleImage.getWidth(), grayscaleImage.getHeight(), Bitmap.Config.ARGB_8888);
+
+        // Set the threshold value for binarization
+        int threshold = 128; // Adjust the threshold as needed
+
+        // Iterate over each pixel in the grayscale image
+        for (int i = 0; i < grayscaleImage.getWidth(); i++) {
+            for (int j = 0; j < grayscaleImage.getHeight(); j++) {
+                // Get the grayscale value of the pixel
+                int pixel = grayscaleImage.getPixel(i, j);
+                int grayValue = Color.red(pixel); // Assuming grayscale
+
+                // Apply binarization based on the threshold
+                if (grayValue > threshold) {
+                    binaryImage.setPixel(i, j, Color.WHITE);
+                } else {
+                    binaryImage.setPixel(i, j, Color.BLACK);
+                }
+            }
+        }
+
+        // Return the binary image
+        return binaryImage;
+    }
+
+    /**
+     * Converts the input bitmap to grayscale.
+     *
+     * @param originalImage The original image to be converted to grayscale.
+     * @return A grayscale version of the original image.
+     */
+    public static Bitmap toGrayscale(Bitmap originalImage) {
+        // Create a new bitmap with the same dimensions as the original image
+        Bitmap grayscaleImage = Bitmap.createBitmap(originalImage.getWidth(), originalImage.getHeight(), Bitmap.Config.RGB_565);
+
+        // Create a canvas to draw on the grayscale image
+        Canvas canvas = new Canvas(grayscaleImage);
+
+        // Create a paint object for applying color transformations
+        Paint paint = new Paint();
+
+        // Create a color matrix for transforming colors to grayscale
+        ColorMatrix colorMatrix = new ColorMatrix();
+        colorMatrix.setSaturation(0); // Set saturation to 0 to convert to grayscale
+
+        // Create a color filter using the color matrix
+        ColorMatrixColorFilter colorMatrixColorFilter = new ColorMatrixColorFilter(colorMatrix);
+
+        // Apply the color filter to the paint object
+        paint.setColorFilter(colorMatrixColorFilter);
+
+        // Draw the original image onto the canvas with the applied color filter
+        canvas.drawBitmap(originalImage, 0, 0, paint);
+
+        // Return the grayscale image
+        return grayscaleImage;
     }
 }

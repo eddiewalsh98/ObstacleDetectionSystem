@@ -119,7 +119,7 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     /**
      * ProcessCameraProvider instance for managing camera operations.
      */
-    private ProcessCameraProvider cameraProvider;
+    public ProcessCameraProvider cameraProvider;
 
     /**
      * Context used for various Android system operations.
@@ -134,7 +134,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(
             // Registering for activity result using the RequestPermission contract
             new ActivityResultContracts.RequestPermission(),
-
             // Callback to handle the result of the permission request
             new ActivityResultCallback<Boolean>() {
                 @Override
@@ -239,6 +238,16 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                     // Launch the activity result launcher for camera permission request
                     activityResultLauncher.launch(Manifest.permission.CAMERA);
                 } else {
+                    // Initialize TextToSpeech and speak a welcome message
+                    TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+                        @Override
+                        public void onInit(int status) {
+                            if (status == TextToSpeech.SUCCESS) {
+                                speaker.speakText("Obstacle Detection has begun. Hold your device in front of you.");
+                            }
+                        }
+                    });
+
                     // Bind the camera preview
                     BindPreview(cameraProvider);
                 }
@@ -247,16 +256,6 @@ public class ObjectDetectionActivity extends AppCompatActivity {
                 Log.e("CameraX Camera Provider", Objects.requireNonNull(e.getMessage()));
             }
             }, ContextCompat.getMainExecutor(this));
-
-        // Initialize TextToSpeech and speak a welcome message
-        TextToSpeech tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int status) {
-                if (status == TextToSpeech.SUCCESS) {
-                    speaker.speakText("Obstacle Detection has begun. Hold your device in front of you.");
-                }
-            }
-        });
     }
 
     /**
@@ -333,6 +332,9 @@ public class ObjectDetectionActivity extends AppCompatActivity {
 
                                                         // Invalidate the rectangle overlay view to trigger redraw
                                                         rectangleOverlayView.invalidate();
+
+                                                    } else{
+                                                        rectangleOverlayView.clearRect();
                                                     }
                                                 }
                                             }
